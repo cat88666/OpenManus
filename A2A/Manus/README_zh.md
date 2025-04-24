@@ -4,6 +4,7 @@
 
 ## Prerequisites
 - conda activate 'Your OpenManus python env'
+- cd OpenManus/A2A
 - pip install -r requirements.txt
 
 ## Setup & Running
@@ -25,7 +26,7 @@
    uv run .
    ```
 
-4. 通过A2A Client的命令行向OpenManus 发送任务
+3. 通过A2A Client的命令行向OpenManus 发送任务
 
 
 ## Examples

@@ -4,6 +4,7 @@ This is an experimental integration of the A2A protocol (https://google.github.i
 
 ## Prerequisites
 - conda activate 'Your OpenManus python env'
+- cd OpenManus/A2A
 - pip install -r requirements.txt
 
 ## Setup & Running
