@@ -13,7 +13,7 @@
 
    ```bash
    cd OpenManus
-   python -m A2A.Manus.__main__
+   python -m A2A.Manus.main
    ```
 
 2. 拉取A2A官方库并运行A2A Client 详情参考（https://github.com/google/A2A）:

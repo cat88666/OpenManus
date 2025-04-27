@@ -13,7 +13,7 @@ This is an experimental integration of the A2A protocol (https://google.github.i
 
    ```bash
    cd OpenManus
-   python -m A2A.Manus.__main__
+   python -m A2A.Manus.main
    ```
 
 2. Clone A2A official repository and run A2A Client (details at https://github.com/google/A2A):

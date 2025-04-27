@@ -1,5 +1,5 @@
 import httpx
-from typing import Any, Dict, AsyncIterable, Literal
+from typing import Any, Dict, AsyncIterable, Literal, List, ClassVar
 from pydantic import BaseModel
 from app.agent.manus import Manus
 
@@ -8,13 +8,11 @@ class ResponseFormat(BaseModel):
     status: Literal["input_required", "completed", "error"] = "input_required"
     message: str
 
-class ManusAgent:
-    def __init__(self):
-        self.agent = Manus()
+class A2AManus(Manus):
 
     async def invoke(self, query, sessionId) -> str:
         config = {"configurable": {"thread_id": sessionId}}
-        response = await self.agent.run(query)
+        response = await self.run(query)
         return self.get_agent_response(config,response)
 
     async def stream(self, query: str) -> AsyncIterable[Dict[str, Any]]:
@@ -29,4 +27,4 @@ class ManusAgent:
             "content": agent_response,
         }
 
-    SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
+    SUPPORTED_CONTENT_TYPES : ClassVar[List[str]] = ["text", "text/plain"]
