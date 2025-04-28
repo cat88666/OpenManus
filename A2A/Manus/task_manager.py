@@ -27,7 +27,7 @@ from A2A.common.server.task_manager import InMemoryTaskManager
 from A2A.Manus.agent import A2AManus
 from A2A.common.utils.push_notification_auth import PushNotificationSenderAuth
 import A2A.common.server.utils as utils
-from typing import Union
+from typing import Union,Callable,Awaitable
 import asyncio
 import logging
 import traceback
@@ -36,17 +36,17 @@ logger = logging.getLogger(__name__)
 
 
 class AgentTaskManager(InMemoryTaskManager):
-    def __init__(self, agent: A2AManus, notification_sender_auth: PushNotificationSenderAuth):
+    def __init__(self, agent_factory: Callable[[],Awaitable[A2AManus]], notification_sender_auth: PushNotificationSenderAuth):
         super().__init__()
-        self.agent = agent
+        self.agent_factory = agent_factory
         self.notification_sender_auth = notification_sender_auth
 
     async def _run_streaming_agent(self, request: SendTaskStreamingRequest):
         task_send_params: TaskSendParams = request.params
         query = self._get_user_query(task_send_params)
-
+        agent= await self.agent_factory()
         try:
-            async for item in self.agent.stream(query, task_send_params.sessionId):
+            async for item in agent.stream(query, task_send_params.sessionId):
                 is_task_complete = item["is_task_complete"]
                 require_user_input = item["require_user_input"]
                 artifact = None
@@ -135,8 +135,9 @@ class AgentTaskManager(InMemoryTaskManager):
 
         task_send_params: TaskSendParams = request.params
         query = self._get_user_query(task_send_params)
+        agent= await self.agent_factory()
         try:
-            agent_response = await self.agent.invoke(query, task_send_params.sessionId)
+            agent_response = await agent.invoke(query, task_send_params.sessionId)
         except Exception as e:
             logger.error(f"Error invoking agent: {e}")
             raise ValueError(f"Error invoking agent: {e}")

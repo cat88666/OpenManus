@@ -74,10 +74,10 @@ async def main(host:str = "localhost", port:int = 10000):
 
         notification_sender_auth = PushNotificationSenderAuth()
         notification_sender_auth.generate_jwk()
-        A2AManus_instance = await A2AManus.create(max_steps=5)
         server = A2AServer(
             agent_card=agent_card,
-            task_manager=AgentTaskManager(agent=A2AManus_instance, notification_sender_auth=notification_sender_auth),
+            task_manager=AgentTaskManager(
+                agent_factory=lambda:A2AManus.create(max_steps=3), notification_sender_auth=notification_sender_auth),
             host=host,
             port=port,
         )
