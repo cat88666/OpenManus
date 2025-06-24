@@ -1,23 +1,22 @@
 # Manus Agent with A2A Protocol
 
-这是一个将A2A协议(https://google.github.io/A2A/#/documentation)与OpenManus结合的一个尝试,当前仅支持非流式
+This is an experimental integration of the A2A protocol (https://google.github.io/A2A/#/documentation) with OpenManus, currently supporting only non-streaming mode.
 
 ## Prerequisites
 - conda activate 'Your OpenManus python env'
 - pip install a2a-sdk
 
 
-
 ## Setup & Running
 
-1. 运行A2A Server:
+1. Run A2A Server:
 
    ```bash
    cd OpenManus
-   python -m A2A.Manus.main
+   python -m protocol.a2a.app.main
    ```
 
-2. 拉取A2A官方库并运行A2A Client，有两种使用A2A客户端的方式——CLI以及在前端页面注册Agent服务。（详情参考https://github.com/google/A2A）:
+2. Clone A2A official repository and run A2A Client,there are two ways to use A2AClient——CLI and  Register A2A Agent Server in UI.(details at https://github.com/google/A2A):
 
    ```bash
    git clone https://github.com/google-a2a/a2a-samples.git
@@ -27,12 +26,12 @@
    uv run .
    ```
 
-3. 通过A2A Client的命令行向OpenManus发送任务或者在A2A前端页面上将其注册
+3. Send tasks to OpenManus via A2A Client CLI or Register A2A Agent Server in UI
 
 
 ## Examples
 
-**获得Agent Card**
+**Get Agent Card**
 
 Request:
 
@@ -122,7 +121,7 @@ Response:
 }
 ```
 
-**发送任务**
+**Send Task**
 
 Request:
 

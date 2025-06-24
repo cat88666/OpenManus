@@ -9,9 +9,9 @@ from a2a.types import (
     AgentSkill,
 )
 
-from A2A.Manus.agent_executor import ManusExecutor
+from .agent_executor import ManusExecutor
 
-from A2A.Manus.agent import A2AManus
+from .agent import A2AManus
 from app.tool.browser_use_tool import _BROWSER_DESCRIPTION
 from app.tool.str_replace_editor import _STR_REPLACE_EDITOR_DESCRIPTION
 from app.tool.terminate import _TERMINATE_DESCRIPTION

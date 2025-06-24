@@ -14,7 +14,7 @@ from a2a.utils import (
     completed_task,
     new_artifact,
 )
-from A2A.Manus.agent import A2AManus
+from .agent import A2AManus
 from a2a.utils.errors import ServerError
 from typing import Callable, Awaitable
 
