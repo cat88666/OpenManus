@@ -1,4 +1,5 @@
 import httpx
+import argparse
 
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -25,17 +26,20 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def main(host:str = "localhost", port:int = 10000):
+
+async def main(host: str = "localhost", port: int = 10000):
     """Starts the Manus Agent server."""
     try:
         capabilities = AgentCapabilities(streaming=False, pushNotifications=True)
-        skills=[
+        skills = [
             AgentSkill(
-            id="Python Execute",
-            name="Python Execute Tool",
-            description="Executes Python code string. Note: Only print outputs are visible, function return values are not captured. Use print statements to see results.",
-            tags=["Execute Python Code"],
-            examples=["Execute Python code:'''python \n Print('Hello World') \n '''"],
+                id="Python Execute",
+                name="Python Execute Tool",
+                description="Executes Python code string. Note: Only print outputs are visible, function return values are not captured. Use print statements to see results.",
+                tags=["Execute Python Code"],
+                examples=[
+                    "Execute Python code:'''python \n Print('Hello World') \n '''"
+                ],
             ),
             AgentSkill(
                 id="Browser use",
@@ -64,9 +68,9 @@ async def main(host:str = "localhost", port:int = 10000):
                 description=_TERMINATE_DESCRIPTION,
                 tags=["terminate task"],
                 examples=["terminate"],
-            )
+            ),
             # Add more skills as needed
-            ]
+        ]
 
         agent_card = AgentCard(
             name="Manus Agent",
@@ -81,11 +85,12 @@ async def main(host:str = "localhost", port:int = 10000):
 
         httpx_client = httpx.AsyncClient()
         request_handler = DefaultRequestHandler(
-            agent_executor=ManusExecutor(agent_factory=lambda:A2AManus.create(max_steps=3)),
+            agent_executor=ManusExecutor(
+                agent_factory=lambda: A2AManus.create(max_steps=3)
+            ),
             task_store=InMemoryTaskStore(),
             push_notifier=InMemoryPushNotifier(httpx_client),
         )
-
 
         server = A2AStarletteApplication(
             agent_card=agent_card, http_handler=request_handler
@@ -97,22 +102,33 @@ async def main(host:str = "localhost", port:int = 10000):
         logger.error(f"An error occurred during server startup: {e}")
         exit(1)
 
+
 def run_server(host: Optional[str] = "localhost", port: Optional[int] = 10000):
     try:
         import uvicorn
+
         app = asyncio.run(main(host, port))
-        config = uvicorn.Config(app=app, host=host, port=port, loop="asyncio", proxy_headers=True)
+        config = uvicorn.Config(
+            app=app, host=host, port=port, loop="asyncio", proxy_headers=True
+        )
         uvicorn.Server(config=config).run()
         logger.info(f"Server started on {host}:{port}")
     except Exception as e:
         logger.error(f"An error occurred while starting the server: {e}")
+
+
 if __name__ == "__main__":
-    import sys
-    host = "localhost"  # 默认值
-    port = 10000        # 默认值
-    for i in range(1, len(sys.argv)):
-        if sys.argv[i] == "--host":
-            host = sys.argv[i + 1]
-        elif sys.argv[i] == "--port":
-            port = int(sys.argv[i + 1])
-    run_server(host, port)
+    # Parse command line arguments for host and port, with default values
+    parser = argparse.ArgumentParser(description="Start Manus Agent service")
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="localhost",
+        help="Server host address, default is localhost",
+    )
+    parser.add_argument(
+        "--port", type=int, default=10000, help="Server port, default is 10000"
+    )
+    args = parser.parse_args()
+    # Start the server with the specified or default host and port
+    run_server(args.host, args.port)

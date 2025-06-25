@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ManusExecutor(AgentExecutor):
     """Currency Conversion AgentExecutor Example."""
 
-    def __init__(self,agent_factory:Callable[[],Awaitable[A2AManus]]):
+    def __init__(self, agent_factory: Callable[[], Awaitable[A2AManus]]):
         self.agent_factory = agent_factory
 
     async def execute(
@@ -41,16 +41,18 @@ class ManusExecutor(AgentExecutor):
         try:
             self.agent = await self.agent_factory()
             result = await self.agent.invoke(query, context.context_id)
-            print(f'Final Result ===> {result}')
+            print(f"Final Result ===> {result}")
         except Exception as e:
-            print('Error invoking agent: %s', e)
-            raise ServerError(
-                error=ValueError(f'Error invoking agent: {e}')
-            ) from e
+            print("Error invoking agent: %s", e)
+            raise ServerError(error=ValueError(f"Error invoking agent: {e}")) from e
         parts = [
             Part(
                 root=TextPart(
-                    text=result["content"] if result["content"]  else 'failed to generate response'
+                    text=(
+                        result["content"]
+                        if result["content"]
+                        else "failed to generate response"
+                    )
                 ),
             )
         ]
@@ -58,10 +60,11 @@ class ManusExecutor(AgentExecutor):
             completed_task(
                 context.task_id,
                 context.context_id,
-                [new_artifact(parts, f'task_{context.task_id}')],
+                [new_artifact(parts, f"task_{context.task_id}")],
                 [context.message],
             )
         )
+
     def _validate_request(self, context: RequestContext) -> bool:
         return False
 
