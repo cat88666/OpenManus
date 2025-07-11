@@ -4,7 +4,7 @@
 
 ## Prerequisites
 - conda activate 'Your OpenManus python env'
-- pip install a2a-sdk
+- pip install a2a-sdk==0.2.5
 
 
 
