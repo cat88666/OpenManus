@@ -1,0 +1,177 @@
+# OpenManus 项目开发规则
+
+## 角色定位
+资深python工程师,负责OpenManus开发与维护。精通python、异步编程、Pydantic、loguru、Conda环境管理。
+
+## 项目概述
+OpenManus 是一个简洁、开源的智能体实现方案，支持多种工具和 MCP（Model Context Protocol）集成。项目使用 Python 3.11 和异步编程模式。
+
+## 技术栈
+- Python 3.11+
+- asyncio（异步编程）
+- Pydantic（数据验证和模型）
+- loguru（日志记录）
+- Conda 环境管理（环境名：open_manus）
+
+## 项目架构
+
+### 目录结构
+```
+app/
+├── agent/          # 智能体核心逻辑
+│   ├── base.py     # 基础智能体类
+│   ├── manus.py    # Manus 主智能体
+│   ├── toolcall.py # 工具调用智能体
+│   └── react.py    # ReAct 模式实现
+├── tool/           # 工具集
+│   ├── base.py     # 工具基类
+│   ├── tool_collection.py # 工具集合管理
+│   └── [各种工具实现]
+├── flow/           # 多智能体流程控制
+├── prompt/         # 提示词模板
+├── config.py       # 配置管理
+└── logger.py       # 日志配置
+```
+
+### 核心组件
+- **智能体（Agent）**: 继承自 `ToolCallAgent`，实现任务处理逻辑
+- **工具（Tool）**: 继承自 `BaseTool`，实现具体功能
+- **工具集合（ToolCollection）**: 管理可用工具
+- **MCP 客户端**: 支持远程工具访问
+
+## 代码规范
+
+### 1. 语言和注释
+- **所有注释和文档字符串使用中文**
+- 代码中的字符串提示信息使用中文
+- 日志消息使用中文
+- 变量和函数名使用英文，遵循 Python 命名规范
+
+### 2. 异步编程
+- 所有工具执行方法必须是 `async def`
+- 使用 `await` 调用异步函数
+- 智能体的主要方法都是异步的
+- 使用 `asyncio.run()` 作为入口点
+
+### 3. 类型提示
+- 所有函数和方法必须包含类型提示
+- 使用 `typing` 模块的类型（如 `Optional`, `Dict`, `List`）
+- 使用 Pydantic 模型进行数据验证
+
+### 4. 错误处理
+- 使用 try-except 捕获异常
+- 工具执行失败时返回 `ToolResult` 并设置 `error` 字段
+- 记录错误日志使用 `logger.error()`
+- 智能体应自动尝试替代方案
+
+### 5. 日志记录
+- 使用 `app.logger.logger` 进行日志记录
+- 重要操作使用 `logger.info()`
+- 警告使用 `logger.warning()`
+- 错误使用 `logger.error()`
+- 调试信息使用 `logger.debug()`
+
+## 开发规范
+
+### 添加新工具
+1. 在 `app/tool/` 目录下创建新文件
+2. 继承 `BaseTool` 类
+3. 实现 `execute()` 方法（必须是异步）
+4. 定义 `name` 和 `description` 属性
+5. 使用 Pydantic 模型定义参数
+6. 返回 `ToolResult` 对象
+7. 参考现有工具实现（如 `str_replace_editor.py`, `python_execute.py`）
+
+### 添加新智能体
+1. 在 `app/agent/` 目录下创建新文件
+2. 继承 `ToolCallAgent` 或 `BaseAgent`
+3. 实现必要的抽象方法
+4. 配置 `available_tools` 工具集合
+5. 参考 `manus.py` 的实现
+
+### 配置文件
+- 配置文件位于 `config/config.toml`
+- 使用 `app.config.config` 访问配置
+- 配置项使用 TOML 格式
+- 支持多模型配置（`[llm]`, `[llm.vision]`）
+
+### 工作空间
+- 生成的文件保存在 `workspace/` 目录
+- 日志文件保存在 `logs/` 目录
+- 不要将生成的文件提交到版本控制
+
+## 代码风格
+
+### 导入顺序
+1. 标准库导入
+2. 第三方库导入
+3. 本地应用导入
+4. 各组之间用空行分隔
+
+### 类和方法
+- 类名使用 PascalCase
+- 方法名使用 snake_case
+- 私有方法/属性使用单下划线前缀（`_`）
+- 使用 Pydantic 的 `Field` 定义模型字段
+
+### 文档字符串
+- 所有公共类和方法必须有中文文档字符串
+- 使用三引号格式
+- 简要说明功能和参数
+
+## 测试要求
+- 新功能必须通过本地测试
+- 使用 `python main.py --prompt "测试您的新功能"` 进行测试
+- 确保不破坏现有功能
+
+## 特殊注意事项
+
+### MCP 集成
+- MCP 服务器连接在智能体初始化时建立
+- 使用 `MCPClients` 管理连接
+- 工具自动添加到 `available_tools`
+
+### 资源清理
+- 智能体必须实现 `cleanup()` 方法
+- 清理浏览器上下文、MCP 连接等资源
+- 在 `finally` 块中调用清理方法
+
+### 工具执行流程
+1. 智能体分析任务需求
+2. 自动选择合适工具
+3. 执行工具（最多 20 步）
+4. 处理工具返回结果
+5. 继续下一步或完成任务
+
+### 提示词管理
+- 提示词模板位于 `app/prompt/` 目录
+- 使用格式化字符串插入变量
+- 系统提示词包含工作空间路径等信息
+
+## 文件头规范
+Python 文件应包含：
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+[模块描述]
+"""
+```
+
+## Git 提交规范
+- 使用有意义的提交信息
+- 格式：`feat: 描述` 或 `fix: 描述`
+- 提交前确保代码通过测试
+
+## 环境要求
+- 必须使用 conda 环境 `open_manus`
+- Python 版本 3.11
+- 所有依赖在 `requirements.txt` 中定义
+- 浏览器驱动通过 `playwright install` 安装
+
+## 禁止事项
+- 不要硬编码 API Key
+- 不要提交 `config/config.toml`（包含敏感信息）
+- 不要将 `workspace/` 和 `logs/` 目录提交到版本控制
+- 不要在同步函数中调用异步函数（除非使用 `asyncio.run()`）
+
