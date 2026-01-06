@@ -16,10 +16,10 @@ from app.tool.str_replace_editor import StrReplaceEditor
 
 
 class Manus(ToolCallAgent):
-    """A versatile general-purpose agent with support for both local and MCP tools."""
+    """一个支持本地工具和 MCP 工具的多功能通用智能体。"""
 
     name: str = "Manus"
-    description: str = "A versatile agent that can solve various tasks using multiple tools including MCP-based tools"
+    description: str = "一个多功能的智能体，可以使用多种工具（包括基于 MCP 的工具）解决各种任务"
 
     system_prompt: str = SYSTEM_PROMPT.format(directory=config.workspace_root)
     next_step_prompt: str = NEXT_STEP_PROMPT
@@ -27,10 +27,10 @@ class Manus(ToolCallAgent):
     max_observe: int = 10000
     max_steps: int = 20
 
-    # MCP clients for remote tool access
+    # MCP 客户端，用于远程工具访问
     mcp_clients: MCPClients = Field(default_factory=MCPClients)
 
-    # Add general-purpose tools to the tool collection
+    # 将通用工具添加到工具集合中
     available_tools: ToolCollection = Field(
         default_factory=lambda: ToolCollection(
             PythonExecute(),
@@ -44,7 +44,7 @@ class Manus(ToolCallAgent):
     special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
     browser_context_helper: Optional[BrowserContextHelper] = None
 
-    # Track connected MCP servers
+    # 跟踪已连接的 MCP 服务器
     connected_servers: Dict[str, str] = Field(
         default_factory=dict
     )  # server_id -> url/command
@@ -52,27 +52,27 @@ class Manus(ToolCallAgent):
 
     @model_validator(mode="after")
     def initialize_helper(self) -> "Manus":
-        """Initialize basic components synchronously."""
+        """同步初始化基础组件。"""
         self.browser_context_helper = BrowserContextHelper(self)
         return self
 
     @classmethod
     async def create(cls, **kwargs) -> "Manus":
-        """Factory method to create and properly initialize a Manus instance."""
+        """工厂方法，创建并正确初始化 Manus 实例。"""
         instance = cls(**kwargs)
         await instance.initialize_mcp_servers()
         instance._initialized = True
         return instance
 
     async def initialize_mcp_servers(self) -> None:
-        """Initialize connections to configured MCP servers."""
+        """初始化与已配置的 MCP 服务器的连接。"""
         for server_id, server_config in config.mcp_config.servers.items():
             try:
                 if server_config.type == "sse":
                     if server_config.url:
                         await self.connect_mcp_server(server_config.url, server_id)
                         logger.info(
-                            f"Connected to MCP server {server_id} at {server_config.url}"
+                            f"已连接到 MCP 服务器 {server_id}，地址: {server_config.url}"
                         )
                 elif server_config.type == "stdio":
                     if server_config.command:
@@ -83,10 +83,10 @@ class Manus(ToolCallAgent):
                             stdio_args=server_config.args,
                         )
                         logger.info(
-                            f"Connected to MCP server {server_id} using command {server_config.command}"
+                            f"已连接到 MCP 服务器 {server_id}，使用命令: {server_config.command}"
                         )
             except Exception as e:
-                logger.error(f"Failed to connect to MCP server {server_id}: {e}")
+                logger.error(f"连接 MCP 服务器 {server_id} 失败: {e}")
 
     async def connect_mcp_server(
         self,
@@ -95,7 +95,7 @@ class Manus(ToolCallAgent):
         use_stdio: bool = False,
         stdio_args: List[str] = None,
     ) -> None:
-        """Connect to an MCP server and add its tools."""
+        """连接到 MCP 服务器并添加其工具。"""
         if use_stdio:
             await self.mcp_clients.connect_stdio(
                 server_url, stdio_args or [], server_id
@@ -105,21 +105,21 @@ class Manus(ToolCallAgent):
             await self.mcp_clients.connect_sse(server_url, server_id)
             self.connected_servers[server_id or server_url] = server_url
 
-        # Update available tools with only the new tools from this server
+        # 仅使用此服务器的新工具更新可用工具
         new_tools = [
             tool for tool in self.mcp_clients.tools if tool.server_id == server_id
         ]
         self.available_tools.add_tools(*new_tools)
 
     async def disconnect_mcp_server(self, server_id: str = "") -> None:
-        """Disconnect from an MCP server and remove its tools."""
+        """断开与 MCP 服务器的连接并移除其工具。"""
         await self.mcp_clients.disconnect(server_id)
         if server_id:
             self.connected_servers.pop(server_id, None)
         else:
             self.connected_servers.clear()
 
-        # Rebuild available tools without the disconnected server's tools
+        # 重建可用工具，排除已断开服务器的工具
         base_tools = [
             tool
             for tool in self.available_tools.tools
@@ -129,16 +129,16 @@ class Manus(ToolCallAgent):
         self.available_tools.add_tools(*self.mcp_clients.tools)
 
     async def cleanup(self):
-        """Clean up Manus agent resources."""
+        """清理 Manus 智能体资源。"""
         if self.browser_context_helper:
             await self.browser_context_helper.cleanup_browser()
-        # Disconnect from all MCP servers only if we were initialized
+        # 仅在已初始化的情况下断开所有 MCP 服务器连接
         if self._initialized:
             await self.disconnect_mcp_server()
             self._initialized = False
 
     async def think(self) -> bool:
-        """Process current state and decide next actions with appropriate context."""
+        """处理当前状态并在适当的上下文中决定下一步操作。"""
         if not self._initialized:
             await self.initialize_mcp_servers()
             self._initialized = True
@@ -159,7 +159,7 @@ class Manus(ToolCallAgent):
 
         result = await super().think()
 
-        # Restore original prompt
+        # 恢复原始提示
         self.next_step_prompt = original_prompt
 
         return result
