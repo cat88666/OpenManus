@@ -1,0 +1,16 @@
+# Global LLM configuration
+#主模型，用于规划和对话。
+[llm]
+model = "deepseek-chat"
+base_url = "https://api.deepseek.com"
+api_key = "sk-8f5183efbee741388a69c14ee0194580"
+max_tokens = 4096
+temperature = 0.0
+
+#视觉模型，用于查看网页截图（通常与主模型一致）。
+[llm.vision]
+model = "deepseek-chat"
+base_url = "https://api.deepseek.com"
+api_key = "sk-8f5183efbee741388a69c14ee0194580"
+max_tokens = 4096
+temperature = 0.0

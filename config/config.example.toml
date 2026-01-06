@@ -1,20 +1,20 @@
-# Global LLM configuration
+# 全局 LLM 配置
 [llm]
-model = "claude-3-7-sonnet-20250219"       # The LLM model to use
-base_url = "https://api.anthropic.com/v1/" # API endpoint URL
-api_key = "YOUR_API_KEY"                   # Your API key
-max_tokens = 8192                          # Maximum number of tokens in the response
-temperature = 0.0                          # Controls randomness
+model = "claude-3-7-sonnet-20250219"       # 要使用的 LLM 模型
+base_url = "https://api.anthropic.com/v1/" # API 端点 URL
+api_key = "YOUR_API_KEY"                   # 您的 API 密钥
+max_tokens = 8192                          # 响应中的最大 token 数量
+temperature = 0.0                          # 控制随机性（0-2，值越大越随机）
 
-# [llm] # Amazon Bedrock
-# api_type = "aws"                                       # Required
-# model = "us.anthropic.claude-3-7-sonnet-20250219-v1:0" # Bedrock supported modelID
-# base_url = "bedrock-runtime.us-west-2.amazonaws.com"   # Not used now
+# [llm] # Amazon Bedrock 配置示例
+# api_type = "aws"                                       # 必需，API 类型
+# model = "us.anthropic.claude-3-7-sonnet-20250219-v1:0" # Bedrock 支持的模型 ID
+# base_url = "bedrock-runtime.us-west-2.amazonaws.com"   # 当前未使用
 # max_tokens = 8192
 # temperature = 1.0
-# api_key = "bear"                                       # Required but not used for Bedrock
+# api_key = "bear"                                       # 必需但 Bedrock 不使用
 
-# [llm] #AZURE OPENAI:
+# [llm] # Azure OpenAI 配置示例
 # api_type= 'azure'
 # model = "YOUR_MODEL_NAME" #"gpt-4o-mini"
 # base_url = "{YOUR_AZURE_ENDPOINT.rstrip('/')}/openai/deployments/{AZURE_DEPLOYMENT_ID}"
@@ -23,7 +23,7 @@ temperature = 0.0                          # Controls randomness
 # temperature = 0.0
 # api_version="AZURE API VERSION" #"2024-08-01-preview"
 
-# [llm] #OLLAMA:
+# [llm] # Ollama 配置示例
 # api_type = 'ollama'
 # model = "llama3.2"
 # base_url = "http://localhost:11434/v1"
@@ -31,23 +31,23 @@ temperature = 0.0                          # Controls randomness
 # max_tokens = 4096
 # temperature = 0.0
 
-# [llm] #Jiekou.AI:
+# [llm] # Jiekou.AI 配置示例
 # api_type = 'jiekou'
-# model = "claude-sonnet-4-5-20250929"                               # The LLM model to use
-# base_url = "https://api.jiekou.ai/openai"                          # API endpoint URL
-# api_key = "your Jiekou.AI api key"                                 # Your API key
-# max_tokens = 64000                                                 # Maximum number of tokens in the response
-# temperature = 0.0                                                  # Controls randomness
+# model = "claude-sonnet-4-5-20250929"                               # 要使用的 LLM 模型
+# base_url = "https://api.jiekou.ai/openai"                          # API 端点 URL
+# api_key = "your Jiekou.AI api key"                                 # 您的 API 密钥
+# max_tokens = 64000                                                 # 响应中的最大 token 数量
+# temperature = 0.0                                                  # 控制随机性
 
-# Optional configuration for specific LLM models
+# 可选配置：特定 LLM 模型（视觉模型）
 [llm.vision]
-model = "claude-3-7-sonnet-20250219"       # The vision model to use
-base_url = "https://api.anthropic.com/v1/" # API endpoint URL for vision model
-api_key = "YOUR_API_KEY"                   # Your API key for vision model
-max_tokens = 8192                          # Maximum number of tokens in the response
-temperature = 0.0                          # Controls randomness for vision model
+model = "claude-3-7-sonnet-20250219"       # 要使用的视觉模型
+base_url = "https://api.anthropic.com/v1/" # 视觉模型的 API 端点 URL
+api_key = "YOUR_API_KEY"                   # 视觉模型的 API 密钥
+max_tokens = 8192                          # 响应中的最大 token 数量
+temperature = 0.0                          # 视觉模型的随机性控制
 
-# [llm.vision] #OLLAMA VISION:
+# [llm.vision] # Ollama 视觉模型配置示例
 # api_type = 'ollama'
 # model = "llama3.2-vision"
 # base_url = "http://localhost:11434/v1"
@@ -55,45 +55,45 @@ temperature = 0.0                          # Controls randomness for vision mode
 # max_tokens = 4096
 # temperature = 0.0
 
-# Optional configuration for specific browser configuration
+# 可选配置：浏览器配置
 # [browser]
-# Whether to run browser in headless mode (default: false)
+# 是否以无头模式运行浏览器（默认：false）
 #headless = false
-# Disable browser security features (default: true)
+# 禁用浏览器安全功能（默认：true）
 #disable_security = true
-# Extra arguments to pass to the browser
+# 传递给浏览器的额外参数
 #extra_chromium_args = []
-# Path to a Chrome instance to use to connect to your normal browser
-# e.g. '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+# 要使用的 Chrome 实例路径，用于连接到您的正常浏览器
+# 例如：'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 #chrome_instance_path = ""
-# Connect to a browser instance via WebSocket
+# 通过 WebSocket 连接到浏览器实例
 #wss_url = ""
-# Connect to a browser instance via CDP
+# 通过 CDP（Chrome DevTools Protocol）连接到浏览器实例
 #cdp_url = ""
 
-# Optional configuration, Proxy settings for the browser
+# 可选配置：浏览器的代理设置
 # [browser.proxy]
 # server = "http://proxy-server:port"
 # username = "proxy-username"
 # password = "proxy-password"
 
-# Optional configuration, Search settings.
+# 可选配置：搜索引擎设置
 # [search]
-# Search engine for agent to use. Default is "Google", can be set to "Baidu" or "DuckDuckGo" or "Bing".
+# 智能体使用的搜索引擎。默认为 "Google"，可设置为 "Baidu"、"DuckDuckGo" 或 "Bing"
 #engine = "Google"
-# Fallback engine order. Default is ["DuckDuckGo", "Baidu", "Bing"] - will try in this order after primary engine fails.
+# 备用引擎顺序。默认为 ["DuckDuckGo", "Baidu", "Bing"] - 主引擎失败后按此顺序尝试
 #fallback_engines = ["DuckDuckGo", "Baidu", "Bing"]
-# Seconds to wait before retrying all engines again when they all fail due to rate limits. Default is 60.
+# 当所有引擎因速率限制而失败时，等待多少秒后重试所有引擎。默认为 60
 #retry_delay = 60
-# Maximum number of times to retry all engines when all fail. Default is 3.
+# 当所有引擎都失败时的最大重试次数。默认为 3
 #max_retries = 3
-# Language code for search results. Options: "en" (English), "zh" (Chinese), etc.
+# 搜索结果的语言代码。选项："en"（英语）、"zh"（中文）等
 #lang = "en"
-# Country code for search results. Options: "us" (United States), "cn" (China), etc.
+# 搜索结果的国家代码。选项："us"（美国）、"cn"（中国）等
 #country = "us"
 
 
-## Sandbox configuration
+# 沙箱配置
 #[sandbox]
 #use_sandbox = false
 #image = "python:3.12-slim"
@@ -103,11 +103,11 @@ temperature = 0.0                          # Controls randomness for vision mode
 #timeout = 300
 #network_enabled = true
 
-# MCP (Model Context Protocol) configuration
+# MCP（Model Context Protocol）配置
 [mcp]
-server_reference = "app.mcp.server" # default server module reference
+server_reference = "app.mcp.server" # 默认服务器模块引用
 
-# Optional Runflow configuration
-# Your can add additional agents into run-flow workflow to solve different-type tasks.
+# 可选配置：运行流程配置
+# 您可以在运行流程工作流中添加额外的智能体来解决不同类型的任务
 [runflow]
-use_data_analysis_agent = false     # The Data Analysi Agent to solve various data analysis tasks
+use_data_analysis_agent = false # 数据分析智能体，用于解决各种数据分析任务

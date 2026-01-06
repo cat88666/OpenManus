@@ -384,19 +384,64 @@ class LLM:
             self.token_counter = TokenCounter(self.tokenizer)
 
     def count_tokens(self, text: str) -> int:
-        """Calculate the number of tokens in a text"""
+        """
+        计算文本的 token 数量
+
+        使用 tokenizer 将文本编码为 token，然后返回 token 的数量。
+        这是计算文本 token 数的最基本方法。
+
+        Args:
+            text: 要计算的文本字符串
+
+        Returns:
+            int: token 数量，如果文本为空则返回 0
+
+        使用示例：
+            tokens = llm.count_tokens("Hello, world!")
+        """
         if not text:
             return 0
         return len(self.tokenizer.encode(text))
 
     def count_message_tokens(self, messages: List[dict]) -> int:
+        """
+        计算消息列表的总 token 数量
+
+        这是计算整个对话历史 token 数的便捷方法。
+        会调用 TokenCounter 来计算，包括格式 token、消息基础 token、
+        内容 token、工具调用 token 等。
+
+        Args:
+            messages: 消息列表，每个消息是字典格式
+
+        Returns:
+            int: 总 token 数量
+
+        使用示例：
+            messages = [{"role": "user", "content": "Hello"}]
+            tokens = llm.count_message_tokens(messages)
+        """
         return self.token_counter.count_message_tokens(messages)
 
     def update_token_count(self, input_tokens: int, completion_tokens: int = 0) -> None:
-        """Update token counts"""
-        # Only track tokens if max_input_tokens is set
+        """
+        更新 token 计数
+
+        累加输入和输出的 token 数量，用于跟踪整个会话的 token 使用情况。
+        这对于控制 API 调用成本和避免超出限制非常重要。
+
+        Args:
+            input_tokens: 本次请求的输入 token 数量
+            completion_tokens: 本次请求的输出 token 数量（默认为 0）
+
+        使用示例：
+            llm.update_token_count(input_tokens=100, completion_tokens=50)
+        """
+        # 累加输入 token
         self.total_input_tokens += input_tokens
+        # 累加输出 token
         self.total_completion_tokens += completion_tokens
+        # 记录日志，显示本次和累计的 token 使用情况
         logger.info(
             f"Token usage: Input={input_tokens}, Completion={completion_tokens}, "
             f"Cumulative Input={self.total_input_tokens}, Cumulative Completion={self.total_completion_tokens}, "
@@ -404,47 +449,82 @@ class LLM:
         )
 
     def check_token_limit(self, input_tokens: int) -> bool:
-        """Check if token limits are exceeded"""
+        """
+        检查是否会超出 token 限制
+
+        在发送请求前检查，如果加上本次请求的 token 数后超过最大限制，
+        则返回 False，表示不能继续。
+
+        Args:
+            input_tokens: 本次请求预计的输入 token 数量
+
+        Returns:
+            bool: True 表示未超出限制，可以继续；False 表示会超出限制
+
+        使用示例：
+            if not llm.check_token_limit(estimated_tokens):
+                raise TokenLimitExceeded("Token limit exceeded")
+        """
         if self.max_input_tokens is not None:
+            # 检查累计 token + 本次 token 是否超过限制
             return (self.total_input_tokens + input_tokens) <= self.max_input_tokens
-        # If max_input_tokens is not set, always return True
+        # 如果没有设置最大限制，总是返回 True（不限制）
         return True
 
     def get_limit_error_message(self, input_tokens: int) -> str:
-        """Generate error message for token limit exceeded"""
+        """
+        生成 token 限制超出的错误消息
+
+        当检测到会超出 token 限制时，生成详细的错误消息，
+        包含当前已使用的 token、本次需要的 token 和最大限制。
+
+        Args:
+            input_tokens: 本次请求预计的输入 token 数量
+
+        Returns:
+            str: 错误消息字符串
+
+        使用示例：
+            if not llm.check_token_limit(tokens):
+                error_msg = llm.get_limit_error_message(tokens)
+                raise TokenLimitExceeded(error_msg)
+        """
         if (
             self.max_input_tokens is not None
             and (self.total_input_tokens + input_tokens) > self.max_input_tokens
         ):
-            return f"Request may exceed input token limit (Current: {self.total_input_tokens}, Needed: {input_tokens}, Max: {self.max_input_tokens})"
+            return f"请求可能超出输入 token 限制 (当前: {self.total_input_tokens}, 需要: {input_tokens}, 最大: {self.max_input_tokens})"
 
-        return "Token limit exceeded"
+        return "Token 限制已超出"
 
     @staticmethod
     def format_messages(
         messages: List[Union[dict, Message]], supports_images: bool = False
     ) -> List[dict]:
         """
-        Format messages for LLM by converting them to OpenAI message format.
+        将消息格式化为 LLM 可接受的格式（OpenAI 消息格式）
+
+        这个方法会将 Message 对象或字典转换为标准的 OpenAI 消息格式。
+        如果模型支持图片，还会处理 base64 编码的图片数据。
 
         Args:
-            messages: List of messages that can be either dict or Message objects
-            supports_images: Flag indicating if the target model supports image inputs
+            messages: 消息列表，可以是 Message 对象或字典
+            supports_images: 标志，表示目标模型是否支持图片输入
 
         Returns:
-            List[dict]: List of formatted messages in OpenAI format
+            List[dict]: 格式化后的消息列表，符合 OpenAI 格式
 
         Raises:
-            ValueError: If messages are invalid or missing required fields
-            TypeError: If unsupported message types are provided
+            ValueError: 如果消息无效或缺少必需字段
+            TypeError: 如果提供了不支持的消息类型
 
-        Examples:
-            >>> msgs = [
-            ...     Message.system_message("You are a helpful assistant"),
-            ...     {"role": "user", "content": "Hello"},
-            ...     Message.user_message("How are you?")
-            ... ]
-            >>> formatted = LLM.format_messages(msgs)
+        使用示例：
+            msgs = [
+                Message.system_message("你是一个有用的助手"),
+                {"role": "user", "content": "你好"},
+                Message.user_message("你好吗？")
+            ]
+            formatted = LLM.format_messages(msgs)
         """
         formatted_messages = []
 
@@ -523,22 +603,29 @@ class LLM:
         temperature: Optional[float] = None,
     ) -> str:
         """
-        Send a prompt to the LLM and get the response.
+        向 LLM 发送提示并获取回复
+
+        这是最常用的方法，用于与 LLM 进行对话。
+        支持流式和非流式响应，自动处理 token 计数和限制检查。
 
         Args:
-            messages: List of conversation messages
-            system_msgs: Optional system messages to prepend
-            stream (bool): Whether to stream the response
-            temperature (float): Sampling temperature for the response
+            messages: 对话消息列表
+            system_msgs: 可选的系统消息，会添加到消息列表的开头
+            stream: 是否使用流式响应（默认 True，可以实时看到生成过程）
+            temperature: 采样温度，控制回复的随机性（None 表示使用默认值）
 
         Returns:
-            str: The generated response
+            str: LLM 生成的回复文本
 
         Raises:
-            TokenLimitExceeded: If token limits are exceeded
-            ValueError: If messages are invalid or response is empty
-            OpenAIError: If API call fails after retries
-            Exception: For unexpected errors
+            TokenLimitExceeded: 如果超出 token 限制
+            ValueError: 如果消息无效或回复为空
+            OpenAIError: 如果 API 调用失败（重试后仍失败）
+            Exception: 其他意外错误
+
+        使用示例：
+            messages = [Message.user_message("你好")]
+            response = await llm.ask(messages, stream=True)
         """
         try:
             # Check if the model supports images
@@ -651,23 +738,31 @@ class LLM:
         temperature: Optional[float] = None,
     ) -> str:
         """
-        Send a prompt with images to the LLM and get the response.
+        向 LLM 发送带图片的提示并获取回复
+
+        这个方法专门用于多模态输入，支持同时发送文本和图片。
+        只有支持多模态的模型（如 GPT-4 Vision、Claude 3）才能使用。
 
         Args:
-            messages: List of conversation messages
-            images: List of image URLs or image data dictionaries
-            system_msgs: Optional system messages to prepend
-            stream (bool): Whether to stream the response
-            temperature (float): Sampling temperature for the response
+            messages: 对话消息列表
+            images: 图片列表，可以是图片 URL 字符串或图片数据字典
+            system_msgs: 可选的系统消息，会添加到消息列表的开头
+            stream: 是否使用流式响应（默认 False）
+            temperature: 采样温度，控制回复的随机性
 
         Returns:
-            str: The generated response
+            str: LLM 生成的回复文本
 
         Raises:
-            TokenLimitExceeded: If token limits are exceeded
-            ValueError: If messages are invalid or response is empty
-            OpenAIError: If API call fails after retries
-            Exception: For unexpected errors
+            TokenLimitExceeded: 如果超出 token 限制
+            ValueError: 如果消息无效、回复为空或模型不支持图片
+            OpenAIError: 如果 API 调用失败（重试后仍失败）
+            Exception: 其他意外错误
+
+        使用示例：
+            messages = [Message.user_message("这是什么？")]
+            images = ["https://example.com/image.jpg"]
+            response = await llm.ask_with_images(messages, images)
         """
         try:
             # For ask_with_images, we always set supports_images to True because
@@ -694,9 +789,7 @@ class LLM:
             multimodal_content = (
                 [{"type": "text", "text": content}]
                 if isinstance(content, str)
-                else content
-                if isinstance(content, list)
-                else []
+                else content if isinstance(content, list) else []
             )
 
             # Add images to content
@@ -809,25 +902,41 @@ class LLM:
         **kwargs,
     ) -> ChatCompletionMessage | None:
         """
-        Ask LLM using functions/tools and return the response.
+        使用工具/函数调用功能向 LLM 发送请求并获取回复
+
+        这个方法支持 Function Calling（函数调用），允许 LLM 选择并调用工具。
+        这是实现智能体工具调用的核心方法。
 
         Args:
-            messages: List of conversation messages
-            system_msgs: Optional system messages to prepend
-            timeout: Request timeout in seconds
-            tools: List of tools to use
-            tool_choice: Tool choice strategy
-            temperature: Sampling temperature for the response
-            **kwargs: Additional completion arguments
+            messages: 对话消息列表
+            system_msgs: 可选的系统消息，会添加到消息列表的开头
+            timeout: 请求超时时间（秒），默认 300 秒
+            tools: 可用工具列表，每个工具是字典格式（通过 tool.to_param() 生成）
+            tool_choice: 工具选择策略
+                - AUTO: 自动选择是否使用工具（默认）
+                - REQUIRED: 必须使用工具
+                - NONE: 不使用工具
+            temperature: 采样温度，控制回复的随机性
+            **kwargs: 其他额外的完成参数
 
         Returns:
-            ChatCompletionMessage: The model's response
+            ChatCompletionMessage | None: LLM 的回复消息，包含文本内容和工具调用。
+                如果响应无效则返回 None
 
         Raises:
-            TokenLimitExceeded: If token limits are exceeded
-            ValueError: If tools, tool_choice, or messages are invalid
-            OpenAIError: If API call fails after retries
-            Exception: For unexpected errors
+            TokenLimitExceeded: 如果超出 token 限制
+            ValueError: 如果工具、tool_choice 或消息无效
+            OpenAIError: 如果 API 调用失败（重试后仍失败）
+            Exception: 其他意外错误
+
+        使用示例：
+            messages = [Message.user_message("帮我执行某个任务")]
+            tools = [tool.to_param() for tool in available_tools]
+            response = await llm.ask_tool(messages, tools=tools, tool_choice=ToolChoice.AUTO)
+            if response.tool_calls:
+                # 处理工具调用
+                for tool_call in response.tool_calls:
+                    ...
         """
         try:
             # Validate tool_choice
