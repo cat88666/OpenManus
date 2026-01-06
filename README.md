@@ -165,8 +165,6 @@ OpenManus/
    ```
 3. **提交更改**
    ```bash
-   git add .
-   git commit -m "feat: 添加了超级厉害的功能"
-   git push
+   git add . && git commit -m "feat: 添加了超级厉害的功能" && git push
    ```
 ---

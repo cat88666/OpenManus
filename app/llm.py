@@ -1,3 +1,21 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+LLM（大语言模型）接口模块
+
+本模块提供了与各种 LLM API 交互的统一接口，支持：
+- OpenAI API（包括 Azure OpenAI）
+- AWS Bedrock
+- Token 计数和管理
+- 流式和非流式响应
+- 工具调用（Function Calling）
+- 多模态输入（图片）
+
+主要类：
+- TokenCounter: Token 计数器，用于计算消息的 token 数量
+- LLM: LLM 客户端，封装了与各种 LLM API 的交互
+"""
+
 import math
 from typing import Dict, List, Optional, Union
 
@@ -21,7 +39,7 @@ from tenacity import (
 from app.bedrock import BedrockClient
 from app.config import LLMSettings, config
 from app.exceptions import TokenLimitExceeded
-from app.logger import logger  # Assuming a logger is set up in your app
+from app.logger import logger
 from app.schema import (
     ROLE_VALUES,
     TOOL_CHOICE_TYPE,
@@ -31,7 +49,9 @@ from app.schema import (
 )
 
 
+# 推理模型列表：这些模型使用特殊的参数（如 max_completion_tokens）
 REASONING_MODELS = ["o1", "o3-mini"]
+# 多模态模型列表：这些模型支持图片输入
 MULTIMODAL_MODELS = [
     "gpt-4-vision-preview",
     "gpt-4o",
@@ -43,91 +63,161 @@ MULTIMODAL_MODELS = [
 
 
 class TokenCounter:
-    # Token constants
-    BASE_MESSAGE_TOKENS = 4
-    FORMAT_TOKENS = 2
-    LOW_DETAIL_IMAGE_TOKENS = 85
-    HIGH_DETAIL_TILE_TOKENS = 170
+    """
+    Token 计数器类
 
-    # Image processing constants
-    MAX_SIZE = 2048
-    HIGH_DETAIL_TARGET_SHORT_SIDE = 768
-    TILE_SIZE = 512
+    用于准确计算消息的 token 数量，这对于：
+    - 控制 API 调用成本
+    - 避免超出模型的最大 token 限制
+    - 优化消息长度
+
+    支持：
+    - 文本 token 计数
+    - 图片 token 计数（根据细节级别）
+    - 工具调用 token 计数
+    - 完整消息列表的 token 计数
+    """
+
+    # ========== Token 常量 ==========
+    BASE_MESSAGE_TOKENS = 4  # 每条消息的基础 token 数（格式开销）
+    FORMAT_TOKENS = 2  # 消息列表的格式 token 数
+    LOW_DETAIL_IMAGE_TOKENS = 85  # 低细节图片的固定 token 数
+    HIGH_DETAIL_TILE_TOKENS = 170  # 高细节图片每个 tile 的 token 数
+
+    # ========== 图片处理常量 ==========
+    MAX_SIZE = 2048  # 图片最大尺寸（像素）
+    HIGH_DETAIL_TARGET_SHORT_SIDE = 768  # 高细节图片短边目标尺寸
+    TILE_SIZE = 512  # 图片 tile 尺寸（用于计算高细节图片 token）
 
     def __init__(self, tokenizer):
+        """
+        初始化 Token 计数器
+
+        Args:
+            tokenizer: tiktoken 编码器，用于将文本编码为 token
+        """
         self.tokenizer = tokenizer
 
     def count_text(self, text: str) -> int:
-        """Calculate tokens for a text string"""
+        """
+        计算文本的 token 数量
+
+        Args:
+            text: 要计算的文本字符串
+
+        Returns:
+            int: token 数量，如果文本为空则返回 0
+        """
         return 0 if not text else len(self.tokenizer.encode(text))
 
     def count_image(self, image_item: dict) -> int:
         """
-        Calculate tokens for an image based on detail level and dimensions
+        根据细节级别和尺寸计算图片的 token 数量
 
-        For "low" detail: fixed 85 tokens
-        For "high" detail:
-        1. Scale to fit in 2048x2048 square
-        2. Scale shortest side to 768px
-        3. Count 512px tiles (170 tokens each)
-        4. Add 85 tokens
+        计算规则：
+        - 低细节（low）：固定 85 tokens
+        - 中/高细节（medium/high）：
+          1. 缩放到 2048x2048 正方形内
+          2. 将短边缩放到 768px
+          3. 计算 512px tile 的数量（每个 tile 170 tokens）
+          4. 加上基础 85 tokens
+
+        Args:
+            image_item: 图片信息字典，可能包含：
+                - detail: 细节级别（"low", "medium", "high"）
+                - dimensions: 图片尺寸 (width, height)
+
+        Returns:
+            int: 图片的 token 数量
         """
         detail = image_item.get("detail", "medium")
 
-        # For low detail, always return fixed token count
+        # 低细节：固定 token 数
         if detail == "low":
             return self.LOW_DETAIL_IMAGE_TOKENS
 
-        # For medium detail (default in OpenAI), use high detail calculation
-        # OpenAI doesn't specify a separate calculation for medium
-
-        # For high detail, calculate based on dimensions if available
+        # 中/高细节：根据尺寸计算
+        # OpenAI 的 medium 默认使用高细节计算方式
         if detail == "high" or detail == "medium":
-            # If dimensions are provided in the image_item
+            # 如果提供了尺寸信息，使用实际尺寸计算
             if "dimensions" in image_item:
                 width, height = image_item["dimensions"]
                 return self._calculate_high_detail_tokens(width, height)
 
+        # 如果没有尺寸信息，使用默认值
         return (
             self._calculate_high_detail_tokens(1024, 1024) if detail == "high" else 1024
         )
 
     def _calculate_high_detail_tokens(self, width: int, height: int) -> int:
-        """Calculate tokens for high detail images based on dimensions"""
-        # Step 1: Scale to fit in MAX_SIZE x MAX_SIZE square
+        """
+        计算高细节图片的 token 数量（基于尺寸）
+
+        这是 OpenAI 的图片 token 计算算法：
+        1. 如果图片超过 2048x2048，先缩放到 2048x2048 内
+        2. 将短边缩放到 768px（保持宽高比）
+        3. 计算需要多少个 512x512 的 tile
+        4. 每个 tile 170 tokens，加上基础 85 tokens
+
+        Args:
+            width: 图片宽度（像素）
+            height: 图片高度（像素）
+
+        Returns:
+            int: 计算出的 token 数量
+        """
+        # 步骤 1: 如果超过最大尺寸，缩放到 MAX_SIZE x MAX_SIZE 正方形内
         if width > self.MAX_SIZE or height > self.MAX_SIZE:
             scale = self.MAX_SIZE / max(width, height)
             width = int(width * scale)
             height = int(height * scale)
 
-        # Step 2: Scale so shortest side is HIGH_DETAIL_TARGET_SHORT_SIDE
+        # 步骤 2: 将短边缩放到目标尺寸（保持宽高比）
         scale = self.HIGH_DETAIL_TARGET_SHORT_SIDE / min(width, height)
         scaled_width = int(width * scale)
         scaled_height = int(height * scale)
 
-        # Step 3: Count number of 512px tiles
+        # 步骤 3: 计算需要多少个 512px 的 tile
         tiles_x = math.ceil(scaled_width / self.TILE_SIZE)
         tiles_y = math.ceil(scaled_height / self.TILE_SIZE)
         total_tiles = tiles_x * tiles_y
 
-        # Step 4: Calculate final token count
+        # 步骤 4: 计算最终 token 数 = tile 数 * 每个 tile 的 token + 基础 token
         return (
             total_tiles * self.HIGH_DETAIL_TILE_TOKENS
         ) + self.LOW_DETAIL_IMAGE_TOKENS
 
     def count_content(self, content: Union[str, List[Union[str, dict]]]) -> int:
-        """Calculate tokens for message content"""
+        """
+        计算消息内容的 token 数量
+
+        支持多种内容格式：
+        - 纯文本字符串
+        - 多模态内容列表（文本 + 图片）
+
+        Args:
+            content: 消息内容，可以是：
+                - 字符串：纯文本
+                - 列表：多模态内容，包含 {"type": "text", "text": "..."} 或图片
+
+        Returns:
+            int: token 数量
+        """
         if not content:
             return 0
 
+        # 如果是字符串，直接计算
         if isinstance(content, str):
             return self.count_text(content)
 
+        # 如果是列表，遍历每个元素
         token_count = 0
         for item in content:
             if isinstance(item, str):
+                # 文本元素
                 token_count += self.count_text(item)
             elif isinstance(item, dict):
+                # 字典元素：可能是文本或图片
                 if "text" in item:
                     token_count += self.count_text(item["text"])
                 elif "image_url" in item:
@@ -135,34 +225,65 @@ class TokenCounter:
         return token_count
 
     def count_tool_calls(self, tool_calls: List[dict]) -> int:
-        """Calculate tokens for tool calls"""
+        """
+        计算工具调用的 token 数量
+
+        Args:
+            tool_calls: 工具调用列表，每个调用包含 function 字段
+
+        Returns:
+            int: token 数量
+        """
         token_count = 0
         for tool_call in tool_calls:
             if "function" in tool_call:
                 function = tool_call["function"]
+                # 计算工具名称的 token
                 token_count += self.count_text(function.get("name", ""))
+                # 计算工具参数的 token（JSON 字符串）
                 token_count += self.count_text(function.get("arguments", ""))
         return token_count
 
     def count_message_tokens(self, messages: List[dict]) -> int:
-        """Calculate the total number of tokens in a message list"""
-        total_tokens = self.FORMAT_TOKENS  # Base format tokens
+        """
+        计算消息列表的总 token 数量
 
+        这是最常用的方法，用于计算整个对话历史的 token 数。
+        包括：
+        - 格式 token（消息列表的基础格式）
+        - 每条消息的基础 token
+        - 角色、内容、工具调用等所有字段的 token
+
+        Args:
+            messages: 消息列表，每个消息是字典格式
+
+        Returns:
+            int: 总 token 数量
+
+        使用示例：
+            messages = [{"role": "user", "content": "Hello"}]
+            tokens = counter.count_message_tokens(messages)
+        """
+        # 消息列表的基础格式 token
+        total_tokens = self.FORMAT_TOKENS
+
+        # 遍历每条消息
         for message in messages:
-            tokens = self.BASE_MESSAGE_TOKENS  # Base tokens per message
+            # 每条消息的基础 token
+            tokens = self.BASE_MESSAGE_TOKENS
 
-            # Add role tokens
+            # 添加角色 token
             tokens += self.count_text(message.get("role", ""))
 
-            # Add content tokens
+            # 添加内容 token
             if "content" in message:
                 tokens += self.count_content(message["content"])
 
-            # Add tool calls tokens
+            # 添加工具调用 token
             if "tool_calls" in message:
                 tokens += self.count_tool_calls(message["tool_calls"])
 
-            # Add name and tool_call_id tokens
+            # 添加 name 和 tool_call_id token（用于工具消息）
             tokens += self.count_text(message.get("name", ""))
             tokens += self.count_text(message.get("tool_call_id", ""))
 
@@ -172,15 +293,51 @@ class TokenCounter:
 
 
 class LLM:
+    """
+    LLM（大语言模型）客户端类
+
+    这是与各种 LLM API 交互的统一接口，支持：
+    - OpenAI API（包括 Azure OpenAI）
+    - AWS Bedrock
+    - Token 计数和管理
+    - 流式和非流式响应
+    - 工具调用（Function Calling）
+    - 多模态输入（图片）
+
+    设计模式：
+    - 单例模式：每个配置名称只有一个实例，避免重复创建客户端
+    - 重试机制：使用 tenacity 库自动重试失败的请求
+
+    主要方法：
+    - ask(): 发送文本消息，获取 LLM 回复
+    - ask_with_images(): 发送带图片的消息
+    - ask_tool(): 发送消息并支持工具调用
+    """
+
+    # 单例字典：存储不同配置名称的 LLM 实例
     _instances: Dict[str, "LLM"] = {}
 
     def __new__(
         cls, config_name: str = "default", llm_config: Optional[LLMSettings] = None
     ):
+        """
+        单例模式实现（魔术方法）
+
+        确保每个配置名称只有一个 LLM 实例，避免重复创建客户端连接。
+
+        Args:
+            config_name: 配置名称，用于区分不同的 LLM 配置
+            llm_config: 可选的 LLM 配置对象
+
+        Returns:
+            LLM: LLM 实例（单例）
+        """
+        # 如果该配置名称还没有实例，创建新实例
         if config_name not in cls._instances:
             instance = super().__new__(cls)
             instance.__init__(config_name, llm_config)
             cls._instances[config_name] = instance
+        # 返回已存在的实例
         return cls._instances[config_name]
 
     def __init__(
