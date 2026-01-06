@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+日志配置模块
+
+注意：运行此文件前，请确保已激活 conda 环境：
+    conda activate open_manus
+"""
 import sys
 from datetime import datetime
 
@@ -10,7 +18,7 @@ _print_level = "INFO"
 
 
 def define_log_level(print_level="INFO", logfile_level="DEBUG", name: str = None):
-    """Adjust the log level to above level"""
+    """调整日志级别到指定级别以上"""
     global _print_level
     _print_level = print_level
 
@@ -18,7 +26,7 @@ def define_log_level(print_level="INFO", logfile_level="DEBUG", name: str = None
     formatted_date = current_date.strftime("%Y%m%d%H%M%S")
     log_name = (
         f"{name}_{formatted_date}" if name else formatted_date
-    )  # name a log with prefix name
+    )  # 使用前缀名称命名日志文件
 
     _logger.remove()
     _logger.add(sys.stderr, level=print_level)
@@ -30,13 +38,13 @@ logger = define_log_level()
 
 
 if __name__ == "__main__":
-    logger.info("Starting application")
-    logger.debug("Debug message")
-    logger.warning("Warning message")
-    logger.error("Error message")
-    logger.critical("Critical message")
+    logger.info("应用程序启动")
+    logger.debug("调试消息")
+    logger.warning("警告消息")
+    logger.error("错误消息")
+    logger.critical("严重错误消息")
 
     try:
-        raise ValueError("Test error")
+        raise ValueError("测试错误")
     except Exception as e:
-        logger.exception(f"An error occurred: {e}")
+        logger.exception(f"发生错误: {e}")
