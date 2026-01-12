@@ -9,11 +9,11 @@ OpenManus 是一个简洁、开源的智能体实现方案，支持多种工具�
 ## 模块化规则导入
 为了更好地组织和管理开发规范，我们将详细规则拆分到以下 `skills` 文件中。请参考这些文件以获取完整的开发指导。
 
-- [Python 编码规范](skills/python_coding_standards.md)
-- [OpenManus 项目架构](skills/openmanus_architecture.md)
-- [OpenManus 开发指南](skills/openmanus_development_guidelines.md)
-- [OpenManus 特殊注意事项](skills/openmanus_special_considerations.md)
-- [OpenManus 禁止事项](skills/openmanus_prohibitions.md)
+- [Python 编码规范](skills/Python%20编码规范.md)
+- [OpenManus 项目架构](skills/OpenManus%20项目架构.md)
+- [OpenManus 开发指南](skills/OpenManus%20开发指南.md)
+- [OpenManus 特殊注意事项](skills/OpenManus%20特殊注意事项.md)
+- [OpenManus 禁止事项](skills/OpenManus%20禁止事项.md)
 
 ## 技术栈
 - Python 3.11+
