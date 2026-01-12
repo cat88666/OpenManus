@@ -6,9 +6,13 @@
 从 TOML 配置文件加载扫描器配置。
 """
 
-import tomllib
 from pathlib import Path
 from typing import Optional
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Python < 3.11
 
 from app.config import PROJECT_ROOT
 from app.jobs.models import JobConfig

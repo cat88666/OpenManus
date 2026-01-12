@@ -73,4 +73,6 @@ class Job(BaseModel):
     url: str = Field(..., description="工作详情链接")
     source: str = Field(..., description="来源网站")
     description: Optional[str] = Field(None, description="工作描述")
+    published_date: Optional[str] = Field(None, description="发布时间")
+    salary_range: Optional[str] = Field(None, description="薪资范围")
 

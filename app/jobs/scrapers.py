@@ -7,6 +7,7 @@
 """
 
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from typing import List
 
 import httpx
@@ -32,6 +33,16 @@ class RemotiveScraper(BaseScraper):
                 if response.status_code == 200:
                     data = response.json()
                     for job_data in data.get("jobs", []):
+                        # 提取发布时间
+                        published_date = job_data.get("publication_date") or job_data.get("published_at")
+                        # 提取薪资范围（转换为字符串）
+                        salary_raw = (
+                            job_data.get("salary")
+                            or job_data.get("salary_range")
+                            or job_data.get("compensation")
+                        )
+                        salary_range = str(salary_raw) if salary_raw is not None else None
+
                         jobs.append(
                             Job(
                                 id=f"remotive_{job_data['id']}",
@@ -41,6 +52,8 @@ class RemotiveScraper(BaseScraper):
                                 url=job_data.get("url", ""),
                                 source=self.name,
                                 description=job_data.get("description", ""),
+                                published_date=published_date,
+                                salary_range=salary_range,
                             )
                         )
             except Exception as e:
@@ -65,11 +78,13 @@ class WWRScraper(BaseScraper):
                         title_elem = item.find("title")
                         desc_elem = item.find("description")
                         link_elem = item.find("link")
+                        pub_date_elem = item.find("pubDate")
 
                         if title_elem is not None and link_elem is not None:
                             title = title_elem.text or ""
                             description = desc_elem.text if desc_elem is not None else ""
                             link = link_elem.text or ""
+                            published_date = pub_date_elem.text if pub_date_elem is not None else None
 
                             jobs.append(
                                 Job(
@@ -80,6 +95,8 @@ class WWRScraper(BaseScraper):
                                     url=link,
                                     source=self.name,
                                     description=description,
+                                    published_date=published_date,
+                                    salary_range=None,  # WWR RSS 通常不包含薪资信息
                                 )
                             )
             except Exception as e:
@@ -108,6 +125,23 @@ class RemoteOKScraper(BaseScraper):
                         if not isinstance(job_data, dict):
                             continue
 
+                        # 提取发布时间（RemoteOK 使用 epoch 时间戳）
+                        published_date = None
+                        if job_data.get("epoch"):
+                            try:
+                                dt = datetime.fromtimestamp(job_data["epoch"])
+                                published_date = dt.strftime("%Y-%m-%d")
+                            except (ValueError, OSError):
+                                pass
+
+                        # 提取薪资范围（转换为字符串）
+                        salary_raw = (
+                            job_data.get("salary")
+                            or job_data.get("salary_min")
+                            or job_data.get("compensation")
+                        )
+                        salary_range = str(salary_raw) if salary_raw is not None else None
+
                         jobs.append(
                             Job(
                                 id=f"remoteok_{job_data.get('id', '')}",
@@ -117,6 +151,8 @@ class RemoteOKScraper(BaseScraper):
                                 url=f"https://remoteok.com/remote-jobs/{job_data.get('id', '')}",
                                 source=self.name,
                                 description=job_data.get("description", ""),
+                                published_date=published_date,
+                                salary_range=salary_range,
                             )
                         )
             except Exception as e:
@@ -139,6 +175,16 @@ class ArbeitnowScraper(BaseScraper):
                     data = response.json()
                     job_list = data.get("data", [])
                     for job_data in job_list:
+                        # 提取发布时间
+                        published_date = job_data.get("created_at") or job_data.get("published_at")
+                        # 提取薪资范围（转换为字符串）
+                        salary_raw = (
+                            job_data.get("salary")
+                            or job_data.get("salary_range")
+                            or job_data.get("compensation")
+                        )
+                        salary_range = str(salary_raw) if salary_raw is not None else None
+
                         jobs.append(
                             Job(
                                 id=f"arbeitnow_{job_data.get('slug', '')}",
@@ -148,6 +194,8 @@ class ArbeitnowScraper(BaseScraper):
                                 url=job_data.get("url", ""),
                                 source=self.name,
                                 description=job_data.get("description", ""),
+                                published_date=published_date,
+                                salary_range=salary_range,
                             )
                         )
             except Exception as e:

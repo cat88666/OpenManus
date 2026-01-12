@@ -16,9 +16,13 @@
 
 import json
 import threading
-import tomllib
 from pathlib import Path
 from typing import Dict, List, Optional
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Python < 3.11
 
 from pydantic import BaseModel, Field
 
