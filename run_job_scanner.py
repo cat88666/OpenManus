@@ -16,7 +16,7 @@ project_root = Path(__file__).resolve().parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from app.job_scanner.scheduler import JobScannerScheduler
+from app.jobs.scheduler import JobScannerScheduler
 from app.logger import define_log_level, logger
 
 
@@ -50,7 +50,7 @@ async def main():
     try:
         # 创建调度器
         if args.config:
-            from app.job_scanner.config_loader import ConfigLoader
+            from app.jobs.config_loader import ConfigLoader
 
             config = ConfigLoader.load_config(args.config)
             scheduler = JobScannerScheduler(config)
@@ -89,4 +89,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

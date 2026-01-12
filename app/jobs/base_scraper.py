@@ -9,7 +9,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from app.job_scanner.models import Job, SiteConfig
+from app.jobs.models import Job, SiteConfig
 from app.logger import logger
 
 

@@ -11,8 +11,8 @@ from typing import List
 
 import httpx
 
-from app.job_scanner.base_scraper import BaseScraper
-from app.job_scanner.models import Job, SiteConfig
+from app.jobs.base_scraper import BaseScraper
+from app.jobs.models import Job, SiteConfig
 from app.logger import logger
 
 

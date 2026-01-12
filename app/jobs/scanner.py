@@ -8,11 +8,11 @@
 
 from typing import List
 
-from app.job_scanner.config_loader import ConfigLoader
-from app.job_scanner.models import Job, JobConfig
-from app.job_scanner.scrapers import create_scraper
-from app.job_scanner.storage import JobStorage
-from app.job_scanner.telegram_service import TelegramService
+from app.jobs.config_loader import ConfigLoader
+from app.jobs.models import Job, JobConfig
+from app.jobs.scrapers import create_scraper
+from app.jobs.storage import JobStorage
+from app.jobs.telegram_service import TelegramService
 from app.logger import logger
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.config import PROJECT_ROOT
-from app.job_scanner.models import JobConfig
+from app.jobs.models import JobConfig
 from app.logger import logger
 
 

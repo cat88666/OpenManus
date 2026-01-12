@@ -10,7 +10,7 @@ from typing import List
 
 import httpx
 
-from app.job_scanner.models import Job, TelegramConfig
+from app.jobs.models import Job, TelegramConfig
 from app.logger import logger
 
 
@@ -38,7 +38,11 @@ class TelegramService:
             bool: 是否发送成功
         """
         url = f"{self.base_url}/sendMessage"
-        payload = {"chat_id": self.config.chat_id, "text": text, "parse_mode": "Markdown"}
+        payload = {
+            "chat_id": self.config.chat_id,
+            "text": text,
+            "parse_mode": "Markdown",
+        }
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -47,7 +51,9 @@ class TelegramService:
                     logger.info("Telegram 消息发送成功")
                     return True
                 else:
-                    logger.error(f"Telegram 消息发送失败: {response.status_code} - {response.text}")
+                    logger.error(
+                        f"Telegram 消息发送失败: {response.status_code} - {response.text}"
+                    )
                     return False
         except Exception as e:
             logger.error(f"Telegram 消息发送异常: {e}")
@@ -101,4 +107,3 @@ class TelegramService:
                     success = False
 
         return success
-

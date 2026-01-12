@@ -10,7 +10,7 @@ chat_id = "742831201"
 # 扫描间隔（秒），默认 60 秒（1分钟）
 scan_interval = 60
 # 已发送工作记录文件路径（相对于项目根目录）
-sent_jobs_file = "workspace/job_scanner/sent_jobs.json"
+sent_jobs_file = "workspace/jobs/sent_jobs.json"
 # 每次推送的最大工作数量
 max_jobs_per_message = 10
 
@@ -54,4 +54,3 @@ headers = { "User-Agent" = "Mozilla/5.0" }
 # type = "arbeitnow"
 # url = "https://www.arbeitnow.com/api/job-board-api"
 # timeout = 15
-

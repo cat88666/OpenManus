@@ -49,7 +49,7 @@ class ScannerConfig(BaseModel):
 
     scan_interval: int = Field(60, description="扫描间隔（秒）")
     sent_jobs_file: str = Field(
-        "workspace/job_scanner/sent_jobs.json", description="已发送工作记录文件路径"
+        "workspace/jobs/sent_jobs.json", description="已发送工作记录文件路径"
     )
     max_jobs_per_message: int = Field(10, description="每次推送的最大工作数量")
     filters: FilterConfig = Field(default_factory=FilterConfig, description="过滤配置")

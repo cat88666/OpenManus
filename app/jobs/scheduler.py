@@ -9,9 +9,9 @@
 import asyncio
 from typing import Optional
 
-from app.job_scanner.config_loader import ConfigLoader
-from app.job_scanner.models import JobConfig
-from app.job_scanner.scanner import JobScanner
+from app.jobs.config_loader import ConfigLoader
+from app.jobs.models import JobConfig
+from app.jobs.scanner import JobScanner
 from app.logger import logger
 
 
