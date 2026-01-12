@@ -12,18 +12,17 @@ from app.sandbox.core.sandbox import DockerSandbox
 
 
 class SandboxManager:
-    """Docker sandbox manager.
+    """Docker沙箱管理器
 
-    Manages multiple DockerSandbox instances lifecycle including creation,
-    monitoring, and cleanup. Provides concurrent access control and automatic
-    cleanup mechanisms for sandbox resources.
+    管理多个DockerSandbox实例的生命周期，包括创建、监控和清理。
+    提供并发访问控制和沙箱资源的自动清理机制。
 
-    Attributes:
-        max_sandboxes: Maximum allowed number of sandboxes.
-        idle_timeout: Sandbox idle timeout in seconds.
-        cleanup_interval: Cleanup check interval in seconds.
-        _sandboxes: Active sandbox instance mapping.
-        _last_used: Last used time record for sandboxes.
+    属性:
+        max_sandboxes: 允许的最大沙箱数量
+        idle_timeout: 沙箱空闲超时时间（秒）
+        cleanup_interval: 清理检查间隔（秒）
+        _sandboxes: 活跃沙箱实例映射
+        _last_used: 沙箱最后使用时间记录
     """
 
     def __init__(
@@ -32,77 +31,77 @@ class SandboxManager:
         idle_timeout: int = 3600,
         cleanup_interval: int = 300,
     ):
-        """Initializes sandbox manager.
+        """初始化沙箱管理器
 
         Args:
-            max_sandboxes: Maximum sandbox count limit.
-            idle_timeout: Idle timeout in seconds.
-            cleanup_interval: Cleanup check interval in seconds.
+            max_sandboxes: 最大沙箱数量限制
+            idle_timeout: 空闲超时时间（秒）
+            cleanup_interval: 清理检查间隔（秒）
         """
         self.max_sandboxes = max_sandboxes
         self.idle_timeout = idle_timeout
         self.cleanup_interval = cleanup_interval
 
-        # Docker client
+        # Docker客户端
         self._client = docker.from_env()
 
-        # Resource mappings
+        # 资源映射
         self._sandboxes: Dict[str, DockerSandbox] = {}
         self._last_used: Dict[str, float] = {}
 
-        # Concurrency control
+        # 并发控制
         self._locks: Dict[str, asyncio.Lock] = {}
         self._global_lock = asyncio.Lock()
         self._active_operations: Set[str] = set()
 
-        # Cleanup task
+        # 清理任务
         self._cleanup_task: Optional[asyncio.Task] = None
         self._is_shutting_down = False
 
-        # Start automatic cleanup
+        # 启动自动清理
         self.start_cleanup_task()
 
     async def ensure_image(self, image: str) -> bool:
-        """Ensures Docker image is available.
+        """确保Docker镜像可用
 
         Args:
-            image: Image name.
+            image: 镜像名称
 
         Returns:
-            bool: Whether image is available.
+            bool: 镜像是否可用
         """
         try:
             self._client.images.get(image)
             return True
         except ImageNotFound:
             try:
-                logger.info(f"Pulling image {image}...")
+                logger.info(f"正在拉取镜像 {image}...")
                 await asyncio.get_event_loop().run_in_executor(
                     None, self._client.images.pull, image
                 )
                 return True
             except (APIError, Exception) as e:
-                logger.error(f"Failed to pull image {image}: {e}")
+                logger.error(f"拉取镜像失败 {image}: {e}")
                 return False
 
     @asynccontextmanager
     async def sandbox_operation(self, sandbox_id: str):
-        """Context manager for sandbox operations.
+        """沙箱操作的上下文管理器
 
-        Provides concurrency control and usage time updates.
+        提供并发控制和使用时间更新。
 
         Args:
-            sandbox_id: Sandbox ID.
+            sandbox_id: 沙箱ID
 
         Raises:
-            KeyError: If sandbox not found.
+            KeyError: 如果沙箱不存在
         """
         if sandbox_id not in self._locks:
             self._locks[sandbox_id] = asyncio.Lock()
 
         async with self._locks[sandbox_id]:
             if sandbox_id not in self._sandboxes:
-                raise KeyError(f"Sandbox {sandbox_id} not found")
+                raise KeyError(f"沙箱 {sandbox_id} 不存在")
 
             self._active_operations.add(sandbox_id)
             try:
@@ -116,27 +115,25 @@ class SandboxManager:
         config: Optional[SandboxSettings] = None,
         volume_bindings: Optional[Dict[str, str]] = None,
     ) -> str:
-        """Creates a new sandbox instance.
+        """创建新的沙箱实例
 
         Args:
-            config: Sandbox configuration.
-            volume_bindings: Volume mapping configuration.
+            config: 沙箱配置
+            volume_bindings: 卷映射配置
 
         Returns:
-            str: Sandbox ID.
+            str: 沙箱ID
 
         Raises:
-            RuntimeError: If max sandbox count reached or creation fails.
+            RuntimeError: 如果达到最大沙箱数量或创建失败
         """
         async with self._global_lock:
             if len(self._sandboxes) >= self.max_sandboxes:
-                raise RuntimeError(
-                    f"Maximum number of sandboxes ({self.max_sandboxes}) reached"
-                )
+                raise RuntimeError(f"已达到最大沙箱数量 ({self.max_sandboxes})")
 
             config = config or SandboxSettings()
             if not await self.ensure_image(config.image):
-                raise RuntimeError(f"Failed to ensure Docker image: {config.image}")
+                raise RuntimeError(f"无法确保Docker镜像可用: {config.image}")
 
             sandbox_id = str(uuid.uuid4())
             try:
@@ -147,45 +144,45 @@ class SandboxManager:
                 self._last_used[sandbox_id] = asyncio.get_event_loop().time()
                 self._locks[sandbox_id] = asyncio.Lock()
 
-                logger.info(f"Created sandbox {sandbox_id}")
+                logger.info(f"已创建沙箱 {sandbox_id}")
                 return sandbox_id
 
             except Exception as e:
-                logger.error(f"Failed to create sandbox: {e}")
+                logger.error(f"创建沙箱失败: {e}")
                 if sandbox_id in self._sandboxes:
                     await self.delete_sandbox(sandbox_id)
-                raise RuntimeError(f"Failed to create sandbox: {e}")
+                raise RuntimeError(f"创建沙箱失败: {e}")
 
     async def get_sandbox(self, sandbox_id: str) -> DockerSandbox:
-        """Gets a sandbox instance.
+        """获取沙箱实例
 
         Args:
-            sandbox_id: Sandbox ID.
+            sandbox_id: 沙箱ID
 
         Returns:
-            DockerSandbox: Sandbox instance.
+            DockerSandbox: 沙箱实例
 
         Raises:
-            KeyError: If sandbox does not exist.
+            KeyError: 如果沙箱不存在
         """
         async with self.sandbox_operation(sandbox_id) as sandbox:
             return sandbox
 
     def start_cleanup_task(self) -> None:
-        """Starts automatic cleanup task."""
+        """启动自动清理任务"""
 
         async def cleanup_loop():
             while not self._is_shutting_down:
                 try:
                     await self._cleanup_idle_sandboxes()
                 except Exception as e:
-                    logger.error(f"Error in cleanup loop: {e}")
+                    logger.error(f"清理循环错误: {e}")
                 await asyncio.sleep(self.cleanup_interval)
 
         self._cleanup_task = asyncio.create_task(cleanup_loop())
 
     async def _cleanup_idle_sandboxes(self) -> None:
-        """Cleans up idle sandboxes."""
+        """清理空闲沙箱"""
         current_time = asyncio.get_event_loop().time()
         to_cleanup = []
 
@@ -201,14 +198,14 @@ class SandboxManager:
             try:
                 await self.delete_sandbox(sandbox_id)
             except Exception as e:
-                logger.error(f"Error cleaning up sandbox {sandbox_id}: {e}")
+                logger.error(f"清理沙箱 {sandbox_id} 时出错: {e}")
 
     async def cleanup(self) -> None:
-        """Cleans up all resources."""
-        logger.info("Starting manager cleanup...")
+        """清理所有资源"""
+        logger.info("开始管理器清理...")
         self._is_shutting_down = True
 
-        # Cancel cleanup task
+        # 取消清理任务
         if self._cleanup_task:
             self._cleanup_task.cancel()
             try:
@@ -216,70 +213,66 @@ class SandboxManager:
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
 
-        # Get all sandbox IDs to clean up
+        # 获取所有需要清理的沙箱ID
         async with self._global_lock:
             sandbox_ids = list(self._sandboxes.keys())
 
-        # Concurrently clean up all sandboxes
+        # 并发清理所有沙箱
         cleanup_tasks = []
         for sandbox_id in sandbox_ids:
             task = asyncio.create_task(self._safe_delete_sandbox(sandbox_id))
             cleanup_tasks.append(task)
 
         if cleanup_tasks:
-            # Wait for all cleanup tasks to complete, with timeout to avoid infinite waiting
+            # 等待所有清理任务完成，设置超时以避免无限等待
             try:
                 await asyncio.wait(cleanup_tasks, timeout=30.0)
             except asyncio.TimeoutError:
-                logger.error("Sandbox cleanup timed out")
+                logger.error("沙箱清理超时")
 
-        # Clean up remaining references
+        # 清理剩余引用
         self._sandboxes.clear()
         self._last_used.clear()
         self._locks.clear()
         self._active_operations.clear()
 
-        logger.info("Manager cleanup completed")
+        logger.info("管理器清理完成")
 
     async def _safe_delete_sandbox(self, sandbox_id: str) -> None:
-        """Safely deletes a single sandbox.
+        """安全删除单个沙箱
 
         Args:
-            sandbox_id: Sandbox ID to delete.
+            sandbox_id: 要删除的沙箱ID
         """
         try:
             if sandbox_id in self._active_operations:
-                logger.warning(
-                    f"Sandbox {sandbox_id} has active operations, waiting for completion"
-                )
-                for _ in range(10):  # Wait at most 10 times
+                logger.warning(f"沙箱 {sandbox_id} 有活跃操作，等待完成")
+                for _ in range(10):  # 最多等待10次
                     await asyncio.sleep(0.5)
                     if sandbox_id not in self._active_operations:
                         break
                 else:
-                    logger.warning(
-                        f"Timeout waiting for sandbox {sandbox_id} operations to complete"
-                    )
+                    logger.warning(f"等待沙箱 {sandbox_id} 操作完成超时")
 
-            # Get reference to sandbox object
+            # 获取沙箱对象引用
             sandbox = self._sandboxes.get(sandbox_id)
             if sandbox:
                 await sandbox.cleanup()
 
-                # Remove sandbox record from manager
+                # 从管理器中移除沙箱记录
                 async with self._global_lock:
                     self._sandboxes.pop(sandbox_id, None)
                     self._last_used.pop(sandbox_id, None)
                     self._locks.pop(sandbox_id, None)
-                    logger.info(f"Deleted sandbox {sandbox_id}")
+                    logger.info(f"已删除沙箱 {sandbox_id}")
         except Exception as e:
-            logger.error(f"Error during cleanup of sandbox {sandbox_id}: {e}")
+            logger.error(f"清理沙箱 {sandbox_id} 时出错: {e}")
 
     async def delete_sandbox(self, sandbox_id: str) -> None:
-        """Deletes specified sandbox.
+        """删除指定的沙箱
 
         Args:
-            sandbox_id: Sandbox ID.
+            sandbox_id: 沙箱ID
         """
         if sandbox_id not in self._sandboxes:
             return
@@ -287,21 +280,21 @@ class SandboxManager:
         try:
             await self._safe_delete_sandbox(sandbox_id)
         except Exception as e:
-            logger.error(f"Failed to delete sandbox {sandbox_id}: {e}")
+            logger.error(f"删除沙箱 {sandbox_id} 失败: {e}")
 
     async def __aenter__(self) -> "SandboxManager":
-        """Async context manager entry."""
+        """异步上下文管理器入口"""
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit."""
+        """异步上下文管理器退出"""
         await self.cleanup()
 
     def get_stats(self) -> Dict:
-        """Gets manager statistics.
+        """获取管理器统计信息
 
         Returns:
-            Dict: Statistics information.
+            Dict: 统计信息
         """
         return {
             "total_sandboxes": len(self._sandboxes),
