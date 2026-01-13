@@ -1,5 +1,5 @@
 """
-Streamlit仪表板应用
+Streamlit仪表板应用 - 完整版
 """
 import streamlit as st
 import requests
@@ -22,11 +22,8 @@ st.set_page_config(
 st.sidebar.title("🚀 AI数字员工平台")
 page = st.sidebar.radio(
     "选择页面",
-    ["📊 仪表板", "🎯 机会", "📋 项目", "📚 知识库", "📈 分析"]
+    ["📊 仪表板", "🎯 机会", "👥 团队", "📋 项目", "📚 知识库", "📈 分析"]
 )
-
-# 用户ID（演示用）
-user_id = st.sidebar.text_input("用户ID", value="demo-user-001")
 
 # ==================== 仪表板页面 ====================
 
@@ -35,50 +32,36 @@ if page == "📊 仪表板":
     
     try:
         # 获取仪表板数据
-        response = requests.get(f"{API_BASE_URL}/users/{user_id}/dashboard")
+        response = requests.get(f"{API_BASE_URL}/dashboard/summary")
         if response.status_code == 200:
-            data = response.json()
+            data = response.json().get("summary", {})
             
             # 显示关键指标
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.metric("总机会数", data.get("total_opportunities", 0))
+                st.metric("月度收入", f"${data.get('total_income', 0):,.0f}")
             
             with col2:
-                st.metric("申请数", data.get("total_applications", 0))
+                st.metric("月度利润", f"${data.get('total_profit', 0):,.0f}")
             
             with col3:
-                st.metric("项目数", data.get("total_projects", 0))
+                st.metric("团队成员", data.get('team_total', 0))
             
             with col4:
-                st.metric("知识资产", data.get("knowledge_assets_count", 0))
+                st.metric("活跃项目", data.get('projects_active', 0))
             
             st.divider()
             
-            # 最近的机会
-            st.subheader("🎯 最近的机会")
-            if data.get("recent_opportunities"):
-                opportunities_df = pd.DataFrame(data["recent_opportunities"])
-                st.dataframe(
-                    opportunities_df[["title", "platform", "budget", "ai_score", "status"]],
-                    use_container_width=True
-                )
-            else:
-                st.info("暂无机会")
+            # 显示利润率
+            col1, col2 = st.columns(2)
+            with col1:
+                profit_margin = data.get('profit_margin', '0%')
+                st.metric("利润率", profit_margin)
             
-            st.divider()
-            
-            # 最近的项目
-            st.subheader("📋 最近的项目")
-            if data.get("recent_projects"):
-                projects_df = pd.DataFrame(data["recent_projects"])
-                st.dataframe(
-                    projects_df[["title", "status", "budget", "deadline"]],
-                    use_container_width=True
-                )
-            else:
-                st.info("暂无项目")
+            with col2:
+                completed = data.get('projects_completed', 0)
+                st.metric("已完成项目", completed)
         else:
             st.error("无法获取仪表板数据")
     except Exception as e:
@@ -90,128 +73,208 @@ if page == "📊 仪表板":
 elif page == "🎯 机会":
     st.title("🎯 机会管理")
     
-    tab1, tab2, tab3 = st.tabs(["机会列表", "创建机会", "分析机会"])
+    tab1, tab2 = st.tabs(["机会列表", "机会分析"])
     
     with tab1:
-        st.subheader("机会列表")
+        st.subheader("📋 机会列表")
         
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            status_filter = st.selectbox(
-                "状态筛选",
-                ["全部", "discovered", "reviewed", "applied", "won", "rejected"]
-            )
-        with col2:
-            platform_filter = st.selectbox(
-                "平台筛选",
-                ["全部", "upwork", "linkedin", "toptal"]
-            )
-        with col3:
-            limit = st.slider("显示数量", 5, 50, 10)
-        
+        # 获取爬虫状态
         try:
-            params = {
-                "skip": 0,
-                "limit": limit,
-                "status": None if status_filter == "全部" else status_filter,
-                "platform": None if platform_filter == "全部" else platform_filter
-            }
+            crawler_response = requests.get("http://localhost:8000/api/v1/crawler/status")
+            crawler_status = crawler_response.json().get("crawler", {})
             
-            response = requests.get(
-                f"{API_BASE_URL}/users/{user_id}/opportunities",
-                params=params
+            # 显示爬虫状态
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                status_text = "🟢 运行中" if crawler_status.get("is_running") else "🔴 已停止"
+                st.metric("爬虫状态", status_text)
+            with col2:
+                st.metric("爬取间隔", f"{crawler_status.get('crawl_interval', 5)}秒")
+            with col3:
+                st.metric("缓存机会数", crawler_status.get("cached_opportunities", 0))
+            
+            st.divider()
+            
+            # 获取最新机会
+            limit = st.slider("显示数量", 5, 50, 10)
+            opp_response = requests.get(
+                "http://localhost:8000/api/v1/opportunities/latest",
+                params={"limit": limit}
             )
             
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("items"):
-                    df = pd.DataFrame(data["items"])
-                    st.dataframe(
-                        df[["title", "platform", "budget", "ai_score", "status", "created_at"]],
-                        use_container_width=True
-                    )
+            if opp_response.status_code == 200:
+                data = opp_response.json()
+                opportunities = data.get("opportunities", [])
+                
+                if opportunities:
+                    st.success(f"✅ 共找到 {len(opportunities)} 个机会")
+                    st.divider()
                     
-                    # 显示统计信息
-                    st.info(f"总计: {data.get('total', 0)} 个机会")
+                    # 显示机会列表
+                    for idx, opp in enumerate(opportunities, 1):
+                        with st.container(border=True):
+                            # 第一行：来源、标题、链接
+                            col1, col2, col3 = st.columns([1, 3, 1])
+                            
+                            with col1:
+                                platform = opp.get("platform", "unknown").upper()
+                                if platform == "UPWORK":
+                                    st.markdown("🟢 **UPWORK**")
+                                elif platform == "TOPTAL":
+                                    st.markdown("🔵 **TOPTAL**")
+                                elif platform == "LINKEDIN":
+                                    st.markdown("⚫ **LINKEDIN**")
+                                else:
+                                    st.markdown(f"⚪ **{platform}**")
+                            
+                            with col2:
+                                title = opp.get("title", "未知项目")
+                                st.markdown(f"### {title}")
+                            
+                            with col3:
+                                url = opp.get("url", "#")
+                                st.markdown(f"[🔗 查看详情]({url})")
+                            
+                            # 第二行：描述
+                            description = opp.get("description", "暂无描述")
+                            st.markdown(f"**描述**: {description}")
+                            
+                            # 第三行：薪资、周期、评分
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            with col1:
+                                budget = opp.get("budget", 0)
+                                st.markdown(f"💰 **薪资**: ${budget:,.0f}")
+                            
+                            with col2:
+                                duration = opp.get("duration", "未知")
+                                st.markdown(f"⏱️ **周期**: {duration}")
+                            
+                            with col3:
+                                rating = opp.get("client_rating", 0)
+                                st.markdown(f"⭐ **评分**: {rating}/5")
+                            
+                            with col4:
+                                crawled_at = opp.get("crawled_at", "")
+                                if crawled_at:
+                                    st.markdown(f"🕐 **更新**: {crawled_at[:10]}")
+                            
+                            # 第四行：技能标签
+                            skills = opp.get("skills", [])
+                            if skills:
+                                skill_tags = " ".join([f"🏷️ `{skill}`" for skill in skills])
+                                st.markdown(f"**技能**: {skill_tags}")
                 else:
                     st.info("暂无机会")
             else:
                 st.error("无法获取机会列表")
+                
         except Exception as e:
             st.error(f"错误: {e}")
     
     with tab2:
-        st.subheader("创建新机会")
+        st.subheader("机会分析")
         
-        with st.form("create_opportunity_form"):
-            title = st.text_input("标题", placeholder="输入机会标题")
-            description = st.text_area("描述", placeholder="输入机会描述")
-            platform = st.selectbox("平台", ["upwork", "linkedin", "toptal"])
-            budget = st.number_input("预算", min_value=0.0, step=100.0)
-            tech_stack = st.multiselect(
-                "技术栈",
-                ["React", "Python", "Node.js", "FastAPI", "Vue", "Angular", "Java", "C++"]
+        try:
+            opp_response = requests.get(
+                "http://localhost:8000/api/v1/opportunities/latest",
+                params={"limit": 50}
             )
             
-            if st.form_submit_button("创建"):
+            if opp_response.status_code == 200:
+                data = opp_response.json()
+                opportunities = data.get("opportunities", [])
+                
+                if opportunities:
+                    df = pd.DataFrame(opportunities)
+                    
+                    # 按平台统计
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        platform_counts = df["platform"].value_counts()
+                        fig = px.pie(
+                            values=platform_counts.values,
+                            names=platform_counts.index,
+                            title="平台分布"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    with col2:
+                        # 薪资分布
+                        fig = px.histogram(
+                            df,
+                            x="budget",
+                            nbins=20,
+                            title="薪资分布"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("暂无数据")
+        except Exception as e:
+            st.error(f"错误: {e}")
+
+
+# ==================== 团队页面 ====================
+
+elif page == "👥 团队":
+    st.title("👥 团队管理")
+    
+    tab1, tab2 = st.tabs(["团队成员", "添加成员"])
+    
+    with tab1:
+        st.subheader("团队成员列表")
+        
+        try:
+            response = requests.get(f"{API_BASE_URL}/team/members")
+            if response.status_code == 200:
+                data = response.json()
+                members = data.get("members", [])
+                
+                if members:
+                    df = pd.DataFrame(members)
+                    st.dataframe(
+                        df[["name", "email", "skills", "hourly_rate", "commission_rate", "availability"]],
+                        use_container_width=True
+                    )
+                else:
+                    st.info("暂无团队成员")
+            else:
+                st.error("无法获取团队成员")
+        except Exception as e:
+            st.error(f"错误: {e}")
+    
+    with tab2:
+        st.subheader("添加新成员")
+        
+        with st.form("add_member_form"):
+            name = st.text_input("姓名")
+            email = st.text_input("邮箱")
+            skills = st.multiselect(
+                "技能",
+                ["Python", "Java", "Go", "Node.js", "React", "Docker", "Kubernetes", "AWS"]
+            )
+            hourly_rate = st.number_input("时薪 ($)", min_value=10.0, step=5.0)
+            commission_rate = st.slider("分成比例 (%)", 10, 50, 25)
+            usdt_wallet = st.text_input("USDT钱包地址")
+            
+            if st.form_submit_button("添加成员"):
                 try:
                     payload = {
-                        "title": title,
-                        "description": description,
-                        "platform": platform,
-                        "budget": budget,
-                        "tech_stack": tech_stack
+                        "name": name,
+                        "email": email,
+                        "skills": skills,
+                        "hourly_rate": hourly_rate,
+                        "commission_rate": commission_rate / 100,
+                        "usdt_wallet": usdt_wallet
                     }
-                    
-                    response = requests.post(
-                        f"{API_BASE_URL}/opportunities",
-                        json=payload,
-                        params={"user_id": user_id}
-                    )
-                    
+                    response = requests.post(f"{API_BASE_URL}/team/members", json=payload)
                     if response.status_code == 200:
-                        st.success("机会创建成功！")
+                        st.success("成员添加成功！")
                     else:
-                        st.error("创建失败")
+                        st.error("添加失败")
                 except Exception as e:
                     st.error(f"错误: {e}")
-    
-    with tab3:
-        st.subheader("分析机会")
-        
-        opportunity_id = st.text_input("机会ID", placeholder="输入要分析的机会ID")
-        
-        if st.button("分析"):
-            try:
-                response = requests.post(
-                    f"{API_BASE_URL}/opportunities/{opportunity_id}/analyze"
-                )
-                
-                if response.status_code == 200:
-                    analysis = response.json()
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("评分", f"{analysis.get('score', 0)}/100")
-                    with col2:
-                        st.metric("建议出价", f"${analysis.get('recommended_budget', 0)}")
-                    
-                    st.write("**分析理由:**")
-                    st.write(analysis.get("reason", ""))
-                    
-                    if analysis.get("risks"):
-                        st.warning("**风险点:**")
-                        for risk in analysis["risks"]:
-                            st.write(f"- {risk}")
-                    
-                    if analysis.get("recommendations"):
-                        st.info("**建议:**")
-                        for rec in analysis["recommendations"]:
-                            st.write(f"- {rec}")
-                else:
-                    st.error("分析失败")
-            except Exception as e:
-                st.error(f"错误: {e}")
 
 
 # ==================== 项目页面 ====================
@@ -220,30 +283,15 @@ elif page == "📋 项目":
     st.title("📋 项目管理")
     
     try:
-        response = requests.get(
-            f"{API_BASE_URL}/users/{user_id}/projects",
-            params={"skip": 0, "limit": 20}
-        )
-        
+        response = requests.get(f"{API_BASE_URL}/projects")
         if response.status_code == 200:
             data = response.json()
-            if data.get("items"):
-                df = pd.DataFrame(data["items"])
-                
-                # 按状态分组显示
-                st.subheader("项目概览")
-                
-                status_counts = df["status"].value_counts()
-                fig = px.pie(
-                    values=status_counts.values,
-                    names=status_counts.index,
-                    title="项目状态分布"
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                
-                st.subheader("项目列表")
+            projects = data.get("projects", [])
+            
+            if projects:
+                df = pd.DataFrame(projects)
                 st.dataframe(
-                    df[["title", "status", "budget", "deadline", "created_at"]],
+                    df[["title", "status", "budget", "team_member", "deadline"]],
                     use_container_width=True
                 )
             else:
@@ -259,40 +307,7 @@ elif page == "📋 项目":
 elif page == "📚 知识库":
     st.title("📚 知识库")
     
-    try:
-        response = requests.get(
-            f"{API_BASE_URL}/knowledge-assets",
-            params={"skip": 0, "limit": 50}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("items"):
-                df = pd.DataFrame(data["items"])
-                
-                # 按资产类型分组
-                st.subheader("资产类型分布")
-                
-                asset_type_counts = df["asset_type"].value_counts()
-                fig = px.bar(
-                    x=asset_type_counts.index,
-                    y=asset_type_counts.values,
-                    title="资产类型统计",
-                    labels={"x": "资产类型", "y": "数量"}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                
-                st.subheader("知识资产列表")
-                st.dataframe(
-                    df[["title", "asset_type", "quality_score", "reuse_count", "created_at"]],
-                    use_container_width=True
-                )
-            else:
-                st.info("暂无知识资产")
-        else:
-            st.error("无法获取知识资产")
-    except Exception as e:
-        st.error(f"错误: {e}")
+    st.info("知识库功能开发中...")
 
 
 # ==================== 分析页面 ====================
@@ -300,54 +315,19 @@ elif page == "📚 知识库":
 elif page == "📈 分析":
     st.title("📈 数据分析")
     
-    st.subheader("关键指标")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("成功率", "75%", "↑ 5%")
-    
-    with col2:
-        st.metric("平均预算", "$2,500", "↑ $200")
-    
-    with col3:
-        st.metric("总收入", "$15,000", "↑ $3,000")
-    
-    st.divider()
-    
-    # 模拟数据
-    dates = pd.date_range(start="2024-01-01", periods=30, freq="D")
-    opportunities = [10 + i % 5 for i in range(30)]
-    applications = [3 + i % 3 for i in range(30)]
-    success = [1 + i % 2 for i in range(30)]
-    
-    df = pd.DataFrame({
-        "日期": dates,
-        "机会数": opportunities,
-        "申请数": applications,
-        "成功数": success
-    })
-    
-    st.subheader("趋势分析")
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df["日期"], y=df["机会数"], name="机会数", mode="lines"))
-    fig.add_trace(go.Scatter(x=df["日期"], y=df["申请数"], name="申请数", mode="lines"))
-    fig.add_trace(go.Scatter(x=df["日期"], y=df["成功数"], name="成功数", mode="lines"))
-    
-    fig.update_layout(title="30天趋势", xaxis_title="日期", yaxis_title="数量")
-    st.plotly_chart(fig, use_container_width=True)
-
-
-# ==================== 页脚 ====================
-
-st.divider()
-st.markdown(
-    """
-    <div style='text-align: center; color: gray; font-size: 12px;'>
-    AI数字员工平台 v1.0 | 
-    <a href='https://github.com/cat88666/OpenManus' target='_blank'>GitHub</a>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+    try:
+        response = requests.get(f"{API_BASE_URL}/dashboard/summary")
+        if response.status_code == 200:
+            data = response.json().get("summary", {})
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("月度收入", f"${data.get('total_income', 0):,.0f}")
+                st.metric("月度利润", f"${data.get('total_profit', 0):,.0f}")
+            
+            with col2:
+                st.metric("利润率", data.get('profit_margin', '0%'))
+                st.metric("项目完成率", f"{data.get('projects_completed', 0)}/{data.get('projects_total', 0)}")
+    except Exception as e:
+        st.error(f"错误: {e}")
