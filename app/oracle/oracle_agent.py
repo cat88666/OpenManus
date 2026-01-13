@@ -18,8 +18,7 @@ class OracleAgent:
     def __init__(
         self,
         my_skills: Optional[List[str]] = None,
-        min_budget: float = 300,
-        db_path: str = "workspace/opportunities.db"
+        min_budget: float = 300
     ):
         """
         初始化Oracle智能体
@@ -27,11 +26,10 @@ class OracleAgent:
         Args:
             my_skills: 我的技能列表
             min_budget: 最低预算要求
-            db_path: 数据库路径
         """
         self.scraper = UpworkScraper()
         self.analyzer = OpportunityAnalyzer(my_skills=my_skills, min_budget=min_budget)
-        self.db = OpportunityDB(db_path=db_path)
+        self.db = OpportunityDB()  # 使用MySQL openmanus库
         logger.info("Oracle智能体初始化完成")
 
     async def discover_opportunities(
