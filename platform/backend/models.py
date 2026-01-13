@@ -187,7 +187,7 @@ class Analytics(Base):
     period = Column(String(50), nullable=False)  # daily, weekly, monthly
     period_start = Column(DateTime, nullable=False)
     period_end = Column(DateTime, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     __table_args__ = (
