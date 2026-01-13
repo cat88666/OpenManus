@@ -13,6 +13,7 @@ import logging
 
 from commercial_finance import FinanceManager, TransactionType, TransactionStatus
 from commercial_crawler import RemoteProjectCrawler, AutoSubmissionSystem, AutoAcceptanceEngine
+from crawler_service import init_crawler_service, get_crawler_service, start_crawler, stop_crawler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,6 +25,23 @@ finance_manager = FinanceManager()
 crawler = RemoteProjectCrawler()
 submission_system = AutoSubmissionSystem()
 acceptance_engine = AutoAcceptanceEngine()
+
+# 初始化爬虫服务
+init_crawler_service()
+crawler_svc = get_crawler_service()
+
+# 启动爬虫
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时启动爬虫"""
+    crawler_svc.start()
+    logger.info("爬虫服务已启动")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时停止爬虫"""
+    crawler_svc.stop()
+    logger.info("爬虫服务已停止")
 
 
 # ==================== Pydantic Models ====================
@@ -423,7 +441,54 @@ async def auto_assign_project(project_id: int):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# ==================== 仪表板接口 ====================
+# ==================== 爬虫管理接口 ====================
+
+@app.get("/api/v1/crawler/status", tags=["爬虫管理"])
+async def get_crawler_status():
+    """获取爬虫状态"""
+    try:
+        status = crawler_svc.get_crawler_status()
+        return {
+            "success": True,
+            "crawler": status
+        }
+    except Exception as e:
+        logger.error(f"获取爬虫状态失败: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/v1/opportunities/latest", tags=["爬虫管理"])
+async def get_latest_opportunities(limit: int = Query(10, ge=1, le=100)):
+    """获取最新的工作机会"""
+    try:
+        opportunities = crawler_svc.get_latest_opportunities(limit)
+        return {
+            "success": True,
+            "count": len(opportunities),
+            "opportunities": opportunities
+        }
+    except Exception as e:
+        logger.error(f"获取机会失败: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/v1/crawler/crawl-now", tags=["爬虫管理"])
+async def crawl_now():
+    """立即执行一次爬取"""
+    try:
+        opportunities = await crawler_svc.crawl_opportunities()
+        return {
+            "success": True,
+            "count": len(opportunities),
+            "opportunities": opportunities,
+            "message": f"成功爬取{len(opportunities)}个机会"
+        }
+    except Exception as e:
+        logger.error(f"爬取失败: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ==================== 死享板接口 ====================
 
 @app.get("/api/v1/dashboard/summary", tags=["仪表板"])
 async def get_dashboard_summary():
