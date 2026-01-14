@@ -10,9 +10,9 @@ MySQL数据库工具模块
 """
 
 import json
-from typing import Any, Dict, List, Optional
-from datetime import datetime
-
+import os
+from typing import Optional, Dict, Any, List
+from pydantic import Field
 import pymysql
 from pymysql.cursors import DictCursor
 
@@ -113,11 +113,11 @@ class DatabaseTool(BaseTool):
         """初始化数据库工具"""
         super().__init__(**kwargs)
         self._db_config = {
-            'host': 'mysql-2e7c973-facenada1107-6e0b.h.aivencloud.com',
-            'port': 23808,
-            'user': 'avnadmin',
-            'password': '${DB_PASSWORD}',
-            'database': 'openmanus',
+            'host': os.getenv('DB_HOST', 'mysql-2e7c973-facenada1107-6e0b.h.aivencloud.com'),
+            'port': int(os.getenv('DB_PORT', '23808')),
+            'user': os.getenv('DB_USER', 'avnadmin'),
+            'password': os.getenv('DB_PASSWORD', ''),
+            'database': os.getenv('DB_NAME', 'openmanus'),
             'charset': 'utf8mb4',
             'cursorclass': DictCursor,
             'ssl_verify_cert': True,
