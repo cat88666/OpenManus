@@ -1,0 +1,283 @@
+# Manus 智能体与 A2A 协议集成
+
+## 概述
+
+这是一个将 **A2A 协议**（Agent-to-Agent Protocol，由 Google 开发）与 OpenManus 的 Manus 智能体结合的实现。通过 A2A 协议，可以将 OpenManus 的智能体能力暴露为标准的 HTTP 服务，使其他符合 A2A 标准的系统可以调用和集成。
+
+### 什么是 A2A 协议？
+
+A2A（Agent-to-Agent）协议是 Google 开发的一个标准化协议，用于智能体之间的通信和协作。它定义了：
+- 智能体的能力描述（Agent Card）
+- 任务请求和响应的标准格式
+- 智能体之间的通信协议
+
+### 核心功能
+
+1. **协议适配层**：将 OpenManus 的 Manus 智能体包装为符合 A2A 标准的服务
+2. **HTTP 服务**：通过 HTTP 接口接收和处理 A2A 协议请求
+3. **工具能力暴露**：自动暴露 Manus 智能体的所有工具能力，包括：
+   - Python 代码执行
+   - 浏览器自动化
+   - 文件编辑操作
+   - 询问人类
+   - 任务终止
+
+### 架构说明
+
+```
+A2A 客户端
+    ↓ HTTP 请求（JSON-RPC 2.0）
+A2A 服务器（main.py）
+    ↓
+ManusExecutor（agent_executor.py）
+    ↓
+A2AManus（agent.py）
+    ↓
+Manus 智能体
+    ↓ 执行工具
+返回结果（A2A 格式）
+```
+
+### 核心组件
+
+- **main.py**：A2A 服务器启动入口，创建 Agent Card，注册工具技能，启动 HTTP 服务器
+- **agent.py**：A2AManus 类，继承自 Manus，实现 A2A 接口（invoke、stream）
+- **agent_executor.py**：请求执行器，处理 A2A 协议请求，调用 A2AManus 执行任务
+
+### 当前限制
+
+- **仅支持非流式响应**：当前版本不支持流式输出（`streaming=False`）
+- **标准协议**：完全符合 A2A 协议规范
+- **独立服务**：可作为独立服务运行，供其他系统调用
+
+## 前置要求
+
+1. 激活 OpenManus 的 Python 环境：
+   ```bash
+   conda activate open_manus
+   ```
+
+2. 安装 A2A SDK：
+   ```bash
+   pip install a2a-sdk==0.2.5
+   ```
+
+## 设置与运行
+
+### 1. 启动 A2A 服务器
+
+在 OpenManus 项目根目录下运行：
+
+```bash
+cd OpenManus
+python -m protocol.a2a.app.main
+```
+
+服务器默认会在 `localhost:10000` 启动。您也可以通过命令行参数自定义主机和端口：
+
+```bash
+python -m protocol.a2a.app.main --host 0.0.0.0 --port 8080
+```
+
+### 2. 设置 A2A 客户端
+
+有两种使用 A2A 客户端的方式：
+
+#### 方式一：使用 CLI 客户端
+
+1. 克隆 A2A 官方示例库：
+   ```bash
+   git clone https://github.com/google-a2a/a2a-samples.git
+   cd a2a-samples
+   ```
+
+2. 配置环境变量：
+   ```bash
+   echo "GOOGLE_API_KEY=your_api_key_here" > .env
+   ```
+
+3. 运行 CLI 客户端：
+   ```bash
+   cd samples/python/hosts/cli
+   uv run .
+   ```
+
+#### 方式二：在前端页面注册
+
+详情参考 [A2A 官方文档](https://github.com/google/A2A)
+
+### 3. 使用智能体
+
+通过 A2A 客户端的命令行向 OpenManus 发送任务，或者在 A2A 前端页面上将 Manus Agent 注册为服务。
+
+## 使用示例
+
+### 获取 Agent Card
+
+Agent Card 描述了智能体的能力、支持的输入/输出格式以及可用的工具技能。
+
+**请求：**
+
+```bash
+curl http://localhost:10000/.well-known/agent.json
+```
+
+**响应：**
+
+```json
+{
+    "capabilities": {
+        "pushNotifications": true,
+        "streaming": false
+    },
+    "defaultInputModes": [
+        "text",
+        "text/plain"
+    ],
+    "defaultOutputModes": [
+        "text",
+        "text/plain"
+    ],
+    "description": "一个多功能的智能体，可以使用多种工具（包括基于 MCP 的工具）解决各种任务",
+    "name": "Manus Agent",
+    "skills": [
+        {
+            "description": "执行 Python 代码字符串。注意：只有 print 输出可见，函数返回值不会被捕获。使用 print 语句查看结果。",
+            "examples": [
+                "Execute Python code:'''python \n Print('Hello World') \n '''"
+            ],
+            "id": "Python Execute",
+            "name": "Python Execute Tool",
+            "tags": [
+                "Execute Python Code"
+            ]
+        },
+        {
+            "description": "强大的浏览器自动化工具，允许通过各种操作与网页交互。\n* 此工具提供控制浏览器会话、导航网页和提取信息的命令\n* 它在调用之间保持状态，保持浏览器会话活动直到显式关闭\n* 当您需要浏览网站、填写表单、点击按钮、提取内容或执行网络搜索时使用此工具\n* 每个操作都需要工具依赖项中定义的特定参数\n\n主要功能包括：\n* 导航：访问特定 URL、返回、搜索网络或刷新页面\n* 交互：点击元素、输入文本、从下拉菜单中选择、发送键盘命令\n* 滚动：按像素量向上/向下滚动或滚动到特定文本\n* 内容提取：根据特定目标从网页中提取和分析内容\n* 标签页管理：在标签页之间切换、打开新标签页或关闭标签页\n\n注意：使用元素索引时，请参考当前浏览器状态中显示的元素编号。",
+            "examples": [
+                "go_to 'https://www.google.com'"
+            ],
+            "id": "Browser use",
+            "name": "Browser use Tool",
+            "tags": [
+                "Use Browser"
+            ]
+        },
+        {
+            "description": "用于查看、创建和编辑文件的自定义编辑工具\n* 状态在命令调用和与用户的讨论之间保持持久\n* 如果 `path` 是文件，`view` 显示应用 `cat -n` 的结果。如果 `path` 是目录，`view` 列出最多 2 层深的非隐藏文件和目录\n* 如果指定的 `path` 已作为文件存在，则不能使用 `create` 命令\n* 如果 `command` 生成长输出，它将被截断并标记为 `<response clipped>`\n* `undo_edit` 命令将恢复对 `path` 处文件进行的最后一次编辑\n\n使用 `str_replace` 命令的注意事项：\n* `old_str` 参数应该完全匹配原始文件中的一行或多行连续行。注意空格！\n* 如果 `old_str` 参数在文件中不是唯一的，则不会执行替换。确保在 `old_str` 中包含足够的上下文以使其唯一\n* `new_str` 参数应包含应替换 `old_str` 的编辑行",
+            "examples": [
+                "Replace 'old' with 'new' in 'file.txt'"
+            ],
+            "id": "Replace String",
+            "name": "Str_replace Tool",
+            "tags": [
+                "Operate Files"
+            ]
+        },
+        {
+            "description": "使用此工具向人类寻求帮助。",
+            "examples": [
+                "Ask human: 'What time is it?'"
+            ],
+            "id": "Ask human",
+            "name": "Ask human Tool",
+            "tags": [
+                "Ask human for help"
+            ]
+        },
+        {
+            "description": "当请求满足时或助手无法继续执行任务时终止交互。\n当您完成所有任务时，调用此工具以结束工作。",
+            "examples": [
+                "terminate"
+            ],
+            "id": "terminate",
+            "name": "terminate Tool",
+            "tags": [
+                "terminate task"
+            ]
+        }
+    ],
+    "url": "http://localhost:10000/",
+    "version": "1.0.0"
+}
+```
+
+### 发送任务
+
+通过 JSON-RPC 2.0 格式发送任务请求。
+
+**请求：**
+
+```bash
+curl --location 'http://localhost:10000' \
+--header 'Content-Type: application/json' \
+--data '{
+    "id":130,
+    "jsonrpc":"2.0",
+    "method": "message/send",
+    "params": {
+        "message": {
+            "messageId": "",
+            "role": "user",
+            "parts": [{"text":"什么是快乐星球"}]
+        }
+    }
+}'
+```
+
+**响应：**
+
+```json
+{
+    "id": 130,
+    "jsonrpc": "2.0",
+    "result": {
+        "artifacts": [
+            {
+                "artifactId": "2f9d0af8-c7da-4f88-9c8c-3033836322b8",
+                "description": "",
+                "name": "task_cf64d3c9-1e08-4948-a620-76900aa204cf",
+                "parts": [
+                    {
+                        "kind": "text",
+                        "text": "Step 1: "快乐星球"是一个流行的网络用语，源自中国儿童科幻电视剧《快乐星球》。这部剧讲述了一群孩子在一个虚构的"快乐星球"上经历的冒险故事，主题围绕着友谊、成长和科学幻想。后来，"快乐星球"逐渐成为一种网络梗，用来形容一种无忧无虑、充满快乐的理想状态。\n\n如果你对这个词的具体含义、出处或者相关的文化背景有更多兴趣，可以告诉我，我可以为你提供更详细的信息！\nStep 2: Observed output of cmd `terminate` executed:\nThe interaction has been completed with status: success"
+                    }
+                ]
+            }
+        ],
+        "contextId": "44d16c16-9ccf-49c2-9a99-5c9513969b5f",
+        "history": [
+            {
+                "contextId": "44d16c16-9ccf-49c2-9a99-5c9513969b5f",
+                "kind": "message",
+                "messageId": "",
+                "parts": [
+                    {
+                        "kind": "text",
+                        "text": "什么是快乐星球"
+                    }
+                ],
+                "role": "user",
+                "taskId": "cf64d3c9-1e08-4948-a620-76900aa204cf"
+            }
+        ],
+        "id": "cf64d3c9-1e08-4948-a620-76900aa204cf",
+        "kind": "task",
+        "status": {
+            "state": "completed"
+        }
+    }
+}
+```
+
+## 使用场景
+
+1. **作为 A2A 服务端**：运行后，其他 A2A 客户端可以通过 HTTP 调用 Manus 智能体
+2. **工具能力暴露**：自动暴露 Manus 智能体的所有工具能力，供其他系统使用
+3. **系统集成**：将 OpenManus 的能力集成到其他支持 A2A 协议的系统中
+
+## 了解更多
+
+- [A2A 协议官方文档](https://google.github.io/A2A/#/documentation)
+- [A2A GitHub 仓库](https://github.com/google/A2A)
+- [A2A 示例代码](https://github.com/google-a2a/a2a-samples)

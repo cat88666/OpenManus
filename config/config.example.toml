@@ -1,0 +1,113 @@
+# 全局 LLM 配置
+[llm]
+model = "claude-3-7-sonnet-20250219"       # 要使用的 LLM 模型
+base_url = "https://api.anthropic.com/v1/" # API 端点 URL
+api_key = "YOUR_API_KEY"                   # 您的 API 密钥
+max_tokens = 8192                          # 响应中的最大 token 数量
+temperature = 0.0                          # 控制随机性（0-2，值越大越随机）
+
+# [llm] # Amazon Bedrock 配置示例
+# api_type = "aws"                                       # 必需，API 类型
+# model = "us.anthropic.claude-3-7-sonnet-20250219-v1:0" # Bedrock 支持的模型 ID
+# base_url = "bedrock-runtime.us-west-2.amazonaws.com"   # 当前未使用
+# max_tokens = 8192
+# temperature = 1.0
+# api_key = "bear"                                       # 必需但 Bedrock 不使用
+
+# [llm] # Azure OpenAI 配置示例
+# api_type= 'azure'
+# model = "YOUR_MODEL_NAME" #"gpt-4o-mini"
+# base_url = "{YOUR_AZURE_ENDPOINT.rstrip('/')}/openai/deployments/{AZURE_DEPLOYMENT_ID}"
+# api_key = "AZURE API KEY"
+# max_tokens = 8096
+# temperature = 0.0
+# api_version="AZURE API VERSION" #"2024-08-01-preview"
+
+# [llm] # Ollama 配置示例
+# api_type = 'ollama'
+# model = "llama3.2"
+# base_url = "http://localhost:11434/v1"
+# api_key = "ollama"
+# max_tokens = 4096
+# temperature = 0.0
+
+# [llm] # Jiekou.AI 配置示例
+# api_type = 'jiekou'
+# model = "claude-sonnet-4-5-20250929"                               # 要使用的 LLM 模型
+# base_url = "https://api.jiekou.ai/openai"                          # API 端点 URL
+# api_key = "your Jiekou.AI api key"                                 # 您的 API 密钥
+# max_tokens = 64000                                                 # 响应中的最大 token 数量
+# temperature = 0.0                                                  # 控制随机性
+
+# 可选配置：特定 LLM 模型（视觉模型）
+[llm.vision]
+model = "claude-3-7-sonnet-20250219"       # 要使用的视觉模型
+base_url = "https://api.anthropic.com/v1/" # 视觉模型的 API 端点 URL
+api_key = "YOUR_API_KEY"                   # 视觉模型的 API 密钥
+max_tokens = 8192                          # 响应中的最大 token 数量
+temperature = 0.0                          # 视觉模型的随机性控制
+
+# [llm.vision] # Ollama 视觉模型配置示例
+# api_type = 'ollama'
+# model = "llama3.2-vision"
+# base_url = "http://localhost:11434/v1"
+# api_key = "ollama"
+# max_tokens = 4096
+# temperature = 0.0
+
+# 可选配置：浏览器配置
+# [browser]
+# 是否以无头模式运行浏览器（默认：false）
+#headless = false
+# 禁用浏览器安全功能（默认：true）
+#disable_security = true
+# 传递给浏览器的额外参数
+#extra_chromium_args = []
+# 要使用的 Chrome 实例路径，用于连接到您的正常浏览器
+# 例如：'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+#chrome_instance_path = ""
+# 通过 WebSocket 连接到浏览器实例
+#wss_url = ""
+# 通过 CDP（Chrome DevTools Protocol）连接到浏览器实例
+#cdp_url = ""
+
+# 可选配置：浏览器的代理设置
+# [browser.proxy]
+# server = "http://proxy-server:port"
+# username = "proxy-username"
+# password = "proxy-password"
+
+# 可选配置：搜索引擎设置
+# [search]
+# 智能体使用的搜索引擎。默认为 "Google"，可设置为 "Baidu"、"DuckDuckGo" 或 "Bing"
+#engine = "Google"
+# 备用引擎顺序。默认为 ["DuckDuckGo", "Baidu", "Bing"] - 主引擎失败后按此顺序尝试
+#fallback_engines = ["DuckDuckGo", "Baidu", "Bing"]
+# 当所有引擎因速率限制而失败时，等待多少秒后重试所有引擎。默认为 60
+#retry_delay = 60
+# 当所有引擎都失败时的最大重试次数。默认为 3
+#max_retries = 3
+# 搜索结果的语言代码。选项："en"（英语）、"zh"（中文）等
+#lang = "en"
+# 搜索结果的国家代码。选项："us"（美国）、"cn"（中国）等
+#country = "us"
+
+
+# 沙箱配置
+#[sandbox]
+#use_sandbox = false
+#image = "python:3.12-slim"
+#work_dir = "/workspace"
+#memory_limit = "1g"  # 512m
+#cpu_limit = 2.0
+#timeout = 300
+#network_enabled = true
+
+# MCP（Model Context Protocol）配置
+[mcp]
+server_reference = "app.mcp.server" # 默认服务器模块引用
+
+# 可选配置：运行流程配置
+# 您可以在运行流程工作流中添加额外的智能体来解决不同类型的任务
+[runflow]
+use_data_analysis_agent = false # 数据分析智能体，用于解决各种数据分析任务
