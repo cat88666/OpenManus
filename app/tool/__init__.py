@@ -23,4 +23,5 @@ __all__ = [
     "CreateChatCompletion",
     "PlanningTool",
     "Crawl4aiTool",
+    "DatabaseTool",
 ]
