@@ -113,21 +113,31 @@ class DatabaseTool(BaseTool):
         """初始化数据库工具"""
         super().__init__(**kwargs)
         self._db_config = {
-            'host': os.getenv('DB_HOST', 'mysql-2e7c973-facenada1107-6e0b.h.aivencloud.com'),
+            'host': os.getenv('DB_HOST', 'mysql-df85ad2-facenada1107-6e0b.b.aivencloud.com'),
             'port': int(os.getenv('DB_PORT', '23808')),
             'user': os.getenv('DB_USER', 'avnadmin'),
             'password': os.getenv('DB_PASSWORD', ''),
-            'database': os.getenv('DB_NAME', 'openmanus'),
+            'database': os.getenv('DB_NAME', 'defaultdb'),
             'charset': 'utf8mb4',
             'cursorclass': DictCursor,
             'ssl_verify_cert': True,
             'ssl_verify_identity': True,
+            'ssl': True,
         }
     
     def _get_connection(self):
         """获取数据库连接"""
         try:
-            conn = pymysql.connect(**self._db_config)
+            # 为Aiven Cloud MySQL配置 SSL选项
+            ssl_config = {
+                'ca': '/etc/ssl/certs/ca-certificates.crt',
+                'check_hostname': True,
+                'verify_cert': True,
+            }
+            config = {**self._db_config}
+            if config.get('ssl'):
+                config['ssl'] = ssl_config
+            conn = pymysql.connect(**config)
             return conn
         except Exception as e:
             logger.error(f"数据库连接失败: {str(e)}")
