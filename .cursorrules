@@ -7,17 +7,11 @@
 OpenManus 是一个简洁、开源的智能体实现方案，支持多种工具和 MCP（Model Context Protocol）集成。项目使用 Python 3.11 和异步编程模式。
 
 ## 模块化规则导入
-为了更好地组织和管理开发规范，我们将详细规则拆分到以下 `skills` 文件中。请参考这些文件以获取完整的开发指导。
-
+必须遵守以下 `skills` 文件中的规则。
 - [01-项目架构](skills/01-项目架构.md)
 - [02-快速开始](skills/02-快速开始.md)
 - [03-禁止事项](skills/03-禁止事项.md)
 - [04-开发规范](skills/04-开发规范.md)
 - [05-编码规范](skills/05-编码规范.md)
-
-## 技术栈
-- Python 3.11+
-- asyncio（异步编程）
-- Pydantic（数据验证和模型）
-- loguru（日志记录）
-- Conda 环境管理（环境名：open_manus）
+- [06-项目功能](skills/06-项目功能.md)
+- [07-新增功能](skills/07-新增功能.md)
