@@ -2,18 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 Manus 智能体模块
-
 Manus 是 OpenManus 项目的核心智能体，它是一个多功能通用智能体，支持：
 1. 本地工具：Python 执行、浏览器控制、文本编辑、询问人类等
-2. MCP 工具：通过 Model Context Protocol 连接远程服务器，使用远程工具
+2. MCP工具：通过 Model Context Protocol 连接远程服务器，使用远程工具
 3. 浏览器上下文：智能管理浏览器状态，提供上下文感知的提示词
 4. 动态工具管理：可以动态连接/断开 MCP 服务器，实时更新可用工具
 """
 
 from typing import Dict, List, Optional
-
 from pydantic import Field, model_validator
-
 from app.agent.browser import BrowserContextHelper
 from app.agent.toolcall import ToolCallAgent
 from app.config import config
@@ -30,7 +27,6 @@ from app.tool.str_replace_editor import StrReplaceEditor
 class Manus(ToolCallAgent):
     """
     Manus 智能体类
-
     这是 OpenManus 项目的核心智能体，继承自 ToolCallAgent，提供了：
 
     核心功能：
@@ -47,17 +43,13 @@ class Manus(ToolCallAgent):
     """
 
     # 智能体基本信息
-    name: str = "Manus"  # 智能体名称
-    description: str = (
-        "一个多功能的智能体，可以使用多种工具（包括基于 MCP 的工具）解决各种任务"
-    )  # 智能体描述
+    name: str = "Manus"
+    description: str = ("一个多功能的智能体，可以使用多种工具（包括基于 MCP 的工具）解决各种任务")
 
     # 提示词配置
     # system_prompt 会包含工作空间目录信息，帮助智能体了解文件系统结构
     system_prompt: str = SYSTEM_PROMPT.format(directory=config.workspace_root)
     next_step_prompt: str = NEXT_STEP_PROMPT  # 下一步提示词模板
-
-    # 执行限制配置
     max_observe: int = 10000  # 工具返回结果的最大观察长度（字符数）
     max_steps: int = 20  # 最大执行步数，防止无限循环
 
@@ -292,23 +284,9 @@ class Manus(ToolCallAgent):
         self.available_tools.add_tools(*self.mcp_clients.tools)
 
     async def cleanup(self):
-        """
-        清理 Manus 智能体使用的所有资源
-
-        这个方法会在智能体执行完成后自动调用（通过父类的 run 方法），
-        确保所有资源得到正确释放：
-        1. 关闭浏览器（如果使用了浏览器工具）
-        2. 断开所有 MCP 服务器连接（仅在已初始化的情况下）
-        3. 重置初始化标志
-
-        注意：这个方法会调用父类的 cleanup，父类会清理所有工具的资源。
-        """
-        # 清理浏览器资源
         if self.browser_context_helper:
             await self.browser_context_helper.cleanup_browser()
 
-        # 仅在已初始化的情况下断开所有 MCP 服务器连接
-        # 这样可以避免在未初始化时尝试断开连接导致的错误
         if self._initialized:
             await self.disconnect_mcp_server()
             self._initialized = False
@@ -326,48 +304,23 @@ class Manus(ToolCallAgent):
         - 如果使用了，获取当前浏览器状态（URL、标题、标签页、滚动位置等）
         - 将这些信息格式化后添加到提示词中，帮助 LLM 更好地理解当前浏览器状态
         - 如果浏览器有截图，会将截图添加到消息历史中
-
-        Returns:
-            bool:
-                - True: 需要继续执行（有工具调用或内容）
-                - False: 思考完成，无需继续执行
         """
-        # 延迟初始化：如果 MCP 服务器未初始化，先初始化它们
-        # 这允许在创建实例后、首次思考前才连接服务器
         if not self._initialized:
             await self.initialize_mcp_servers()
             self._initialized = True
 
-        # 保存原始提示词，以便后续恢复
         original_prompt = self.next_step_prompt
-
-        # 获取最近 3 条消息，用于检查是否使用了浏览器工具
         recent_messages = self.memory.messages[-3:] if self.memory.messages else []
-
-        # 检查最近的消息中是否使用了浏览器工具
-        # 遍历最近的消息，查找是否有工具调用使用了 BrowserUseTool
         browser_in_use = any(
             tc.function.name == BrowserUseTool().name
             for msg in recent_messages
-            if msg.tool_calls  # 确保消息包含工具调用
-            for tc in msg.tool_calls  # 遍历所有工具调用
+            if msg.tool_calls
+            for tc in msg.tool_calls
         )
-
-        # 如果使用了浏览器工具，更新提示词以包含浏览器上下文
         if browser_in_use:
-            # format_next_step_prompt 会：
-            # 1. 获取当前浏览器状态（URL、标题、标签页、滚动位置等）
-            # 2. 如果有截图，将截图添加到消息历史
-            # 3. 格式化提示词，包含浏览器状态信息
             self.next_step_prompt = (
                 await self.browser_context_helper.format_next_step_prompt()
             )
-
-        # 调用父类的 think 方法执行实际的思考逻辑
         result = await super().think()
-
-        # 恢复原始提示词
-        # 这样下次思考时，如果不再使用浏览器，提示词会恢复正常
         self.next_step_prompt = original_prompt
-
         return result
