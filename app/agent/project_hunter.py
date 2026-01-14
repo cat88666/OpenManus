@@ -194,7 +194,7 @@ class ProjectHunterAgent(ToolCallAgent):
             
             # **模拟职位搜集**
             # 为了绕过浏览器依赖问题，我们在这里返回一个模拟的职位列表
-            # 这个列表的结构严格遵循 `skills/07-新增功能.md` 中定义的 `opportunities` 表结构
+            # 这个列表的结构严格遵循 `skills/07-产品介绍.md` 中定义的 `opportunities` 表结构
             logger.warning("正在使用模拟数据进行职位搜集...")
             self.collected_opportunities = [
                 {

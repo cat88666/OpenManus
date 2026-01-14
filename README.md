@@ -21,6 +21,6 @@ OpenManus 是开源 AI Agent 框架，专注：
 - [04-开发规范](skills/04-开发规范.md)
 - [05-编码规范](skills/05-编码规范.md)
 - [06-项目功能](skills/06-项目功能.md)
-- [07-新增功能](skills/07-新增功能.md)
+- [07-产品介绍](skills/07-产品介绍.md)
 - [08-任务列表](skills/08-任务列表.md)
 - [09-A2A集成](skills/09-A2A集成.md)
