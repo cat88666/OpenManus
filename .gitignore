@@ -1,6 +1,11 @@
 ### Project-specific ###
+# Logs
 logs/
+
+# Data
 data/
+
+# Workspace
 workspace/
 
 ### Python ###
