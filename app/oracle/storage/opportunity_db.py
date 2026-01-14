@@ -12,7 +12,10 @@ from sqlalchemy.orm import sessionmaker, Session
 from app.logger import logger
 
 # MySQL连接配置
-DATABASE_URL = "mysql+pymysql://avnadmin:${DB_PASSWORD}@mysql-2e7c973-facenada1107-6e0b.h.aivencloud.com:23808/openmanus?ssl_mode=REQUIRED"
+import os
+
+# MySQL连接配置 - 从环境变量读取
+DATABASE_URL = os.getenv('DATABASE_URL', 'mysql+pymysql://user:password@localhost:3306/openmanus')
 
 engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
