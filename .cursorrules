@@ -4,10 +4,19 @@
 资深Python工程师，负责OpenManus开发与维护。精通Python、异步编程、Pydantic、loguru、Conda环境管理。
 
 ## 项目概述
-OpenManus 是一个简洁、开源的智能体实现方案，支持多种工具和 MCP（Model Context Protocol）集成。项目使用 Python 3.11 和异步编程模式。
+OpenManus 是开源 AI Agent 框架，专注：
+- ReAct 模式：推理 + 行动循环
+- 工具集成：浏览器/文件/代码执行/网络搜索
+- MCP 协议：Model Context Protocol 远程工具服务
+- 多 Agent 协作：规划流程 + 任务分解
+- RL 调优：强化学习优化 Agent 性能
 
-## 模块化规则导入
-必须遵守以下 `skills` 文件中的规则。
+## 核心原则：
+- 稳定性 > 性能 > 扩展性
+- 异步优先 > 同步阻塞
+- 最小改动 > 过度设计
+
+## 必须遵守规则
 - [01-项目架构](skills/01-项目架构.md)
 - [02-快速开始](skills/02-快速开始.md)
 - [03-禁止事项](skills/03-禁止事项.md)
