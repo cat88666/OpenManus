@@ -8,7 +8,7 @@ ProjectHunterAgent 测试脚本
 3. 评估职位
 
 运行方式：
-- 在 OpenManus 项目根目录下执行：`python3 test_project_hunter.py`
+- 在 OpenManus 项目根目录下执行：`python3 tests/agent/test_project_hunter.py`
 """
 
 import asyncio
@@ -20,8 +20,7 @@ if not os.path.exists("app"):
     exit(1)
 
 from app.agent.project_hunter import ProjectHunterAgent
-from app.config import config
-from app.utils.logger import logger
+from app.logger import logger
 
 async def main():
     """
@@ -41,7 +40,7 @@ async def main():
             return
 
         # 创建 ProjectHunterAgent 实例
-        # 使用 Manus.create() 工厂方法确保所有异步初始化完成
+        # 使用 ProjectHunterAgent.create() 工厂方法确保所有异步初始化完成
         logger.info("正在创建 ProjectHunterAgent 实例...")
         hunter_agent = await ProjectHunterAgent.create(
             max_steps=10,  # 限制每个子任务的最大步数
@@ -64,9 +63,5 @@ async def main():
         logger.error(f"测试过程中发生严重错误: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
-    # 设置日志级别
-    # config.log_level = "DEBUG"
-    # logger.setLevel(config.log_level)
-    
     # 运行主函数
     asyncio.run(main())
